@@ -9,7 +9,6 @@ use crate::{
 };
 
 pub fn action(save: Save, args: SaveArgs) {
-    assert_ne!(0,args.files.len());
     let mut files = args
         .files
         .iter()
@@ -28,11 +27,10 @@ pub fn action(save: Save, args: SaveArgs) {
         })
         .collect_vec();
     let mut current = 0;
-    let mut len = 0;
-    while len != files.len() {
-        len = files.len();
+    while current != files.len() {
         let path = &files[current];
         if path.is_file() {
+            current += 1;
             continue;
         }
         let path = path.to_path();
