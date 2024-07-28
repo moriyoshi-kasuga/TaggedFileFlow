@@ -9,8 +9,9 @@ use crate::{
 };
 
 pub fn action(save: Save, args: SaveArgs) {
-    let mut files = args
-        .files
+    let mut files = args.files;
+    files.sort();
+    let mut files = files
         .iter()
         .map(|f| {
             let path = Path::new(&f);

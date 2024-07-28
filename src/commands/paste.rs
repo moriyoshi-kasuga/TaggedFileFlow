@@ -1,3 +1,5 @@
 use crate::types::PasteArgs;
 
-pub fn action(args: PasteArgs) {}
+pub fn action(args: PasteArgs) {
+    
+}
