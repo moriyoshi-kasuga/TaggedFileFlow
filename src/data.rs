@@ -4,13 +4,13 @@ use std::{
     path::PathBuf,
 };
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum Save {
     MV,
     CP,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum DocumentPath {
     FILE(String),
     FOLDER(String),
@@ -31,7 +31,7 @@ impl DocumentPath {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Document {
     pub current: String,
     pub name: String,
@@ -52,15 +52,27 @@ impl Data {
     pub fn get(&self, name: &str) -> Option<&Document> {
         self.documents.iter().find(|document| document.name == name)
     }
-    pub fn del(&mut self, name: &str) {
+    pub fn del(&mut self, name: &str) -> bool {
+        let len = self.documents.len();
         self.documents.retain(|document| document.name != name);
+        len != self.documents.len()
+    }
+    pub fn pop(&mut self, name: &str) -> Option<Document> {
+        let doc = self.get(name);
+        match doc {
+            Some(doc) => {
+                let doc = doc.clone();
+                self.del(name);
+                Some(doc)
+            }
+            None => None,
+        }
     }
     pub fn all(&self) -> Vec<&Document> {
         self.documents.iter().collect()
     }
     pub fn save(&self) {
-        println!("Saving documents...(todo)");
-        // fs::write(get_file(), serde_json::to_string(self).unwrap()).unwrap();
+        fs::write(get_file(), serde_json::to_string(self).unwrap()).unwrap();
     }
 }
 

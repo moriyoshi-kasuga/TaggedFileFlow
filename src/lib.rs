@@ -5,5 +5,6 @@ pub mod commands {
     pub mod paste;
     pub mod save;
 }
+pub mod asset;
 pub mod data;
 pub mod types;
