@@ -1,17 +1,23 @@
-use clap::Parser;
-use tagged_file_flow::{
-    commands::{del, init, list, paste, save},
-    data::Save,
-    types::{Args, Commands},
-};
+use std::io::{self, Write};
+use std::{env, process::ExitCode};
 
-fn main() {
-    match Args::parse().cmd {
-        Commands::MV(args) => save::action(Save::MV, args),
-        Commands::CP(args) => save::action(Save::CP, args),
-        Commands::Paste(args) => paste::action(args),
-        Commands::Del(args) => del::action(args),
-        Commands::List(args) => list::action(args),
-        Commands::Init => init::action(),
+use clap::Parser;
+use color_print::cformat;
+use commands::{Commands, Run};
+
+mod asset;
+mod commands;
+mod data;
+
+fn main() -> ExitCode {
+    env::remove_var("RUST_LIB_BACKTRACE");
+    env::remove_var("RUST_BACKTRACE");
+
+    match Commands::parse().run() {
+        Ok(()) => ExitCode::SUCCESS,
+        Err(e) => {
+            _ = writeln!(io::stderr(), "{}", cformat!("<red>error:</> {:?}", e));
+            ExitCode::FAILURE
+        }
     }
 }

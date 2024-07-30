@@ -1,3 +1,4 @@
+use anyhow::Context;
 use serde::{Deserialize, Serialize};
 use std::{
     fs::{self},
@@ -5,29 +6,26 @@ use std::{
 };
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub enum Save {
+pub enum SaveType {
     MV,
     CP,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum DocumentPath {
-    FILE(String),
-    FOLDER(String),
+    File(String),
+    Dir(String),
 }
 
 impl DocumentPath {
     pub fn to_path(&self) -> String {
         match self {
-            DocumentPath::FILE(path) => path.to_string(),
-            DocumentPath::FOLDER(path) => path.to_string(),
+            DocumentPath::File(path) => path.to_string(),
+            DocumentPath::Dir(path) => path.to_string(),
         }
     }
     pub fn is_file(&self) -> bool {
-        matches!(self, DocumentPath::FILE(_))
-    }
-    pub fn is_folder(&self) -> bool {
-        matches!(self, DocumentPath::FOLDER(_))
+        matches!(self, DocumentPath::File(_))
     }
 }
 
@@ -35,7 +33,7 @@ impl DocumentPath {
 pub struct Document {
     pub current: String,
     pub name: String,
-    pub save: Save,
+    pub save: SaveType,
     pub files: Vec<DocumentPath>,
 }
 
@@ -68,32 +66,31 @@ impl Data {
             None => None,
         }
     }
-    pub fn all(&self) -> Vec<&Document> {
-        self.documents.iter().collect()
+    pub fn all(&self) -> &Vec<Document> {
+        &self.documents
     }
-    pub fn save(&self) {
-        fs::write(get_file(), serde_json::to_string(self).unwrap()).unwrap();
+    pub fn save(&self) -> anyhow::Result<()> {
+        fs::write(get_file()?, serde_json::to_string(self)?)?;
+        Ok(())
     }
-}
 
-impl Default for Data {
-    fn default() -> Self {
-        let data = &fs::read(get_file()).unwrap();
+    pub fn default() -> anyhow::Result<Self> {
+        let data = &fs::read(get_file()?)?;
         let data = String::from_utf8_lossy(data).to_string();
         if data.is_empty() {
-            return serde_json::from_str("{}").unwrap();
+            return Ok(serde_json::from_str("{}")?);
         }
-        serde_json::from_str(&data).unwrap()
+        Ok(serde_json::from_str(&data)?)
     }
 }
 
-fn get_file() -> PathBuf {
-    let mut cache = dirs::cache_dir().unwrap();
+fn get_file() -> anyhow::Result<PathBuf> {
+    let mut cache = dirs::cache_dir().with_context(|| "not exists cache directory")?;
     cache.push(env!("CARGO_PKG_NAME"));
-    fs::create_dir_all(&cache).unwrap();
+    fs::create_dir_all(&cache)?;
     cache.push("documents.json");
     if !cache.exists() {
         let _ = fs::write(&cache, "{}");
     }
-    cache
+    Ok(cache)
 }

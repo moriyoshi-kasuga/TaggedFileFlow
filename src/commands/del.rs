@@ -1,11 +1,21 @@
-use crate::{data::Data, types::DelArgs};
+use anyhow::anyhow;
+use color_print::cprintln;
 
-pub fn action(args: DelArgs) {
-    let mut data = Data::default();
+use crate::data::Data;
 
-    if !data.del(&args.name) {
-        panic!("not found document: {}", args.name);
+use super::{Del, Run};
+
+impl Run for Del {
+    fn run(&self) -> anyhow::Result<()> {
+        let mut data = Data::default()?;
+
+        if !data.del(&self.name) {
+            return Err(anyhow!("not found {} document", self.name));
+        }
+
+        data.save()?;
+
+        cprintln!("<green>successfully deleted {} document</green>", self.name);
+        Ok(())
     }
-
-    data.save();
 }

@@ -1,21 +1,63 @@
-use crate::{data::Data, types::ListArgs};
+use crate::data::{Data, Document, DocumentPath, SaveType};
+use anyhow::{anyhow, Context, Ok};
+use color_print::{cformat, cprintln, cstr};
 
-pub fn action(args: ListArgs) {
-    match args.name {
-        Some(name) => doc(name),
-        None => all(),
+use super::{List, Run};
+
+impl Run for List {
+    fn run(&self) -> anyhow::Result<()> {
+        match &self.name {
+            Some(name) => doc(name),
+            None => all(),
+        }
     }
 }
 
-pub fn doc(name: String) {
-    let data = Data::default();
-    let doc = match data.get(&name) {
-        Some(doc) => doc,
-        None => panic!("not found document: {}", name),
-    };
-    println!("{:#?}", doc);
+fn doc(name: &String) -> anyhow::Result<()> {
+    let data = Data::default()?;
+    let doc = data
+        .get(name)
+        .with_context(|| format!("not found {} document", name))?;
+    send(doc);
+    Ok(())
 }
 
-pub fn all() {
-    println!("{:#?}", Data::default().all());
+fn all() -> anyhow::Result<()> {
+    let binding = Data::default()?;
+    let docs = binding.all();
+
+    if docs.is_empty() {
+        return Err(anyhow!("no documents"));
+    }
+    for doc in docs {
+        send(doc);
+    }
+    Ok(())
+}
+
+pub fn send(doc: &Document) {
+    let save_type = match doc.save {
+        SaveType::MV => cstr!("<blue>Move"),
+        SaveType::CP => cstr!("<yellow>Copy"),
+    };
+    println!();
+    cprintln!(
+        r###"<white>=> </>{}: <red>{}</> on <white>[{}]</>"###,
+        save_type,
+        doc.name,
+        doc.current,
+    );
+    for path in &doc.files {
+        let doc_type = match path {
+            DocumentPath::File(path) => {
+                let opt = path.rsplit_once('/');
+                match opt {
+                    Some((path, file)) => cformat!("<cyan>{}/<green!>{}", path, file),
+                    None => cformat!("<green!>{}", path),
+                }
+            }
+            DocumentPath::Dir(path) => cformat!("<cyan>{}/", path),
+        };
+        cprintln!("{}", doc_type);
+    }
 }

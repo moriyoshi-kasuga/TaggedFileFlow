@@ -1,56 +1,64 @@
-use clap::{Parser, Subcommand};
+use clap::Parser;
 
-#[derive(Subcommand, Debug, Clone)]
+#[derive(Debug, Clone, Parser)]
+#[clap(about, disable_help_subcommand = true, version)]
 pub enum Commands {
     /// mv to global
-    MV(SaveArgs),
+    MV(MV),
     /// cp to global
-    CP(SaveArgs),
+    CP(CP),
     /// paste from list
-    Paste(PasteArgs),
+    Paste(Paste),
     /// del
-    Del(DelArgs),
+    Del(Del),
     /// show list
-    List(ListArgs),
+    List(List),
     /// init alias
-    Init,
-}
-
-#[derive(Parser, Debug)]
-#[command(about)]
-pub struct Args {
-    #[command(subcommand)]
-    pub cmd: Commands,
+    Init(Init),
 }
 
 #[derive(Parser, Debug, Clone)]
 #[command(about)]
-pub struct PasteArgs {
+pub struct Paste {
     /// Names of files
     pub name: String,
 }
 
 #[derive(Parser, Debug, Clone)]
 #[command(about)]
-pub struct SaveArgs {
+pub struct CP {
     /// Names of files [default: first file name]
     #[arg(short, long)]
     pub name: Option<String>,
     /// Path to files
-    #[clap(required = true)]
+    #[clap(num_args = 1.., required = true)]
+    pub files: Vec<String>,
+}
+#[derive(Parser, Debug, Clone)]
+#[command(about)]
+pub struct MV {
+    /// Names of files [default: first file name]
+    #[arg(short, long)]
+    pub name: Option<String>,
+    /// Path to files
+    #[clap(num_args = 1.., required = true)]
     pub files: Vec<String>,
 }
 
 #[derive(Parser, Debug, Clone)]
 #[command(about)]
-pub struct ListArgs {
+pub struct List {
     /// Names of files
     pub name: Option<String>,
 }
 
 #[derive(Parser, Debug, Clone)]
 #[command(about)]
-pub struct DelArgs {
+pub struct Del {
     /// Names of files
     pub name: String,
 }
+
+#[derive(Parser, Debug, Clone)]
+#[command(about)]
+pub struct Init {}

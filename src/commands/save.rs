@@ -1,61 +1,75 @@
-use core::panic;
 use std::path::Path;
 
-use itertools::Itertools;
+use crate::data::{Data, Document, DocumentPath, SaveType};
+use anyhow::{anyhow, Context};
+use rand::{thread_rng, Rng};
 
-use crate::{
-    data::{Data, Document, DocumentPath, Save},
-    types::SaveArgs,
-};
+use super::{list::send, Run, CP, MV};
 
-pub fn action(save: Save, args: SaveArgs) {
-    let mut files = args.files;
+impl Run for MV {
+    fn run(&self) -> anyhow::Result<()> {
+        action(SaveType::MV, self.files.clone(), self.name.clone())
+    }
+}
+impl Run for CP {
+    fn run(&self) -> anyhow::Result<()> {
+        action(SaveType::CP, self.files.clone(), self.name.clone())
+    }
+}
+
+fn action(save: SaveType, mut files: Vec<String>, name: Option<String>) -> anyhow::Result<()> {
     files.sort();
-    let mut files = files
-        .iter()
-        .map(|f| {
-            let path = Path::new(&f);
-            if !path.exists() {
-                panic!("{} is not exists", f);
-            }
-            if path.is_file() {
-                return DocumentPath::FILE(f.to_string());
-            }
-            if path.is_dir() {
-                return DocumentPath::FOLDER(f.trim_end_matches('/').to_string());
-            }
-            panic!("{} is not a file or dir", &f);
-        })
-        .collect_vec();
+    let mut saves: Vec<DocumentPath> = Vec::default();
+    for f in files {
+        let path = Path::new(&f);
+        if !path.exists() {
+            return Err(anyhow!("{} is not exists", f));
+        }
+        if path.is_file() {
+            saves.push(DocumentPath::File(f.to_string()));
+            continue;
+        }
+        if path.is_dir() {
+            saves.push(DocumentPath::Dir(f.trim_end_matches('/').to_string()));
+            continue;
+        }
+        return Err(anyhow!("{} is not a file or dir", &f));
+    }
     let mut current = 0;
-    while current != files.len() {
-        let path = &files[current];
+    while current != saves.len() {
+        let path = &saves[current];
         if path.is_file() {
             current += 1;
             continue;
         }
         let path = path.to_path();
         let mut removal = vec![];
-        for (index, f) in files[(current + 1)..].iter().enumerate() {
+        for (index, f) in saves[(current + 1)..].iter().enumerate() {
             if f.to_path().starts_with(&path) {
                 removal.push(index + current + 1);
             }
         }
         removal.into_iter().rev().for_each(|i| {
-            files.remove(i);
+            saves.remove(i);
         });
         current += 1;
     }
-    let mut data = Data::default();
-    data.add(Document {
-        current: std::env::current_dir()
-            .unwrap()
+    let name = name.unwrap_or_else(|| thread_rng().gen_range('a'..='z').to_string());
+    let mut data = Data::default()?;
+    if data.get(&name).is_some() {
+        return Err(anyhow!("document {} is already exists", name));
+    }
+    let doc = Document {
+        current: std::env::current_dir()?
             .to_str()
-            .unwrap()
+            .with_context(|| "Parse Error of Path to String")?
             .to_string(),
-        name: args.name.unwrap_or("example".to_string()),
+        name,
         save,
-        files,
-    });
-    data.save();
+        files: saves,
+    };
+    send(&doc);
+    data.add(doc);
+    data.save()?;
+    Ok(())
 }
