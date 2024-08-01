@@ -37,7 +37,7 @@ pub struct CP {
 #[derive(Parser, Debug, Clone)]
 #[command(about)]
 pub struct MV {
-    /// Names of files [default: first file name]
+    /// Names of files [default: Random characters in the range a to z]
     #[arg(short, long)]
     pub name: Option<String>,
     /// Path to files
