@@ -1,0 +1,59 @@
+name: Release
+
+permissions:
+  contents: write
+
+on:
+  push:
+    branches:
+      - main
+      - v[0-9]+.*
+
+jobs:
+  create-git-tag:
+    runs-on: ubuntu-latest
+    outputs:
+      tag_exists: ${{ steps.tag_create.outputs.tag_exists }}
+      tag: ${{ steps.read_toml.outputs.value }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: SebRollen/toml-action@v1.2.0
+        id: read_toml
+        with:
+          file: "Cargo.toml"
+          field: "package.version"
+      - uses: rickstaa/action-create-tag@v1
+        id: "tag_create"
+        with:
+          tag: v${{ steps.read_toml.outputs.value }}
+          tag_exists_error: false
+
+  create-release:
+    needs: create-git-tag
+    if: ${{ needs.create-git-tag.outputs.tag_exists == 'false' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: taiki-e/create-gh-release-action@v1
+        with:
+          title: $version
+          branch: "main|v[0-9]+.*"
+          token: ${{ secrets.GITHUB_TOKEN }}
+          ref: refs/tags/v${{ needs.create-git-tag.outputs.tag }}
+
+  upload-assets:
+    needs:
+      - create-git-tag
+      - create-release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: taiki-e/upload-rust-binary-action@v1
+        with:
+          # (required) Comma-separated list of binary names (non-extension portion of filename) to build and upload.
+          # Note that glob pattern is not supported yet.
+          bin: tagged_file_flow
+          # (required) GitHub token for uploading assets to GitHub Releases.
+          token: ${{ secrets.GITHUB_TOKEN }}
+          ref: refs/tags/v${{ needs.create-git-tag.outputs.tag }}
