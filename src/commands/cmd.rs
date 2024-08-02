@@ -21,7 +21,8 @@ pub enum Commands {
 #[command(about)]
 pub struct Paste {
     /// Names of files
-    pub name: String,
+    #[clap(num_args = 1.., required = true)]
+    pub names: Vec<String>,
 }
 
 #[derive(Parser, Debug, Clone)]
@@ -49,14 +50,15 @@ pub struct MV {
 #[command(about)]
 pub struct List {
     /// Names of files
-    pub name: Option<String>,
+    pub names: Vec<String>,
 }
 
 #[derive(Parser, Debug, Clone)]
 #[command(about)]
 pub struct Del {
     /// Names of files
-    pub name: String,
+    #[clap(num_args = 1.., required = true)]
+    pub names: Vec<String>,
 }
 
 #[derive(Parser, Debug, Clone)]
