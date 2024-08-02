@@ -1,5 +1,8 @@
 name: Create Git Tag
 
+permissions:
+  contents: write
+
 on:
   push:
     branches:
@@ -16,5 +19,5 @@ jobs:
           file: "Cargo.toml"
           field: "package.version"
       - run: |
-          git tag ${{ steps.read_toml.outputs.value }}
-          git push origin ${{ steps.read_toml.outputs.value }}
+          git tag v${{ steps.read_toml.outputs.value }}
+          git push origin v${{ steps.read_toml.outputs.value }}
