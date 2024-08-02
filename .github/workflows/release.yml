@@ -11,13 +11,14 @@ on:
 jobs:
   create-release:
     runs-on: ubuntu-latest
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
       - uses: taiki-e/create-gh-release-action@v1
         with:
-          # (optional) Path to changelog.
-          # changelog: CHANGELOG.md
-          # (required) GitHub token for creating GitHub Releases.
+          changelog: CHANGELOG.md
+          title: $version
+          branch: "main|v[0-9]+"
           token: ${{ secrets.GITHUB_TOKEN }}
 
   upload-assets:
