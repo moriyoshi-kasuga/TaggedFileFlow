@@ -1,8 +1,8 @@
+use rand::seq::SliceRandom;
 use std::path::Path;
 
 use crate::data::{Data, Document, DocumentPath, SaveType};
 use anyhow::{anyhow, Context};
-use rand::{thread_rng, Rng};
 
 use super::{list::send, Run, CP, MV};
 
@@ -54,11 +54,41 @@ fn action(save: SaveType, mut files: Vec<String>, name: Option<String>) -> anyho
         });
         current += 1;
     }
-    let name = name.unwrap_or_else(|| thread_rng().gen_range('a'..='z').to_string());
     let mut data = Data::default()?;
-    if data.get(&name).is_some() {
-        return Err(anyhow!("document {} is already exists", name));
-    }
+    let name = match name {
+        Some(name) => {
+            if data.get(&name).is_some() {
+                Err(anyhow!("document {} is already exists", name))
+            } else {
+                Ok(name)
+            }
+        }
+        None => {
+            let max_depth = 3;
+            let mut stack = vec![String::new()];
+            let random = &mut rand::thread_rng();
+
+            'outer: loop {
+                if stack.is_empty() {
+                    break Err(anyhow!("document name is not specified"));
+                }
+                let prefix = stack.remove(0);
+                let should_push = prefix.len() + 1 != max_depth;
+                let mut chars: Vec<char> = ('a'..='z').collect();
+                chars.shuffle(random);
+                for c in chars {
+                    let mut new_prefix = prefix.clone();
+                    new_prefix.push(c);
+                    if data.get(&new_prefix).is_none() {
+                        break 'outer Ok(new_prefix);
+                    }
+                    if should_push {
+                        stack.push(new_prefix)
+                    }
+                }
+            }
+        }
+    }?;
     let doc = Document {
         current: std::env::current_dir()?
             .to_str()
