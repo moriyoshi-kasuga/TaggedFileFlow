@@ -9,13 +9,18 @@ impl Run for Del {
     fn run(&self) -> anyhow::Result<()> {
         let mut data = Data::default()?;
 
-        if !data.del(&self.name) {
-            return Err(anyhow!("not found {} document", self.name));
+        for name in &self.names {
+            if !data.del(name) {
+                return Err(anyhow!("not found {} document", name));
+            }
         }
 
         data.save()?;
 
-        cprintln!("<green>successfully deleted {} document</green>", self.name);
+        cprintln!(
+            "<green>successfully deleted {} document</green>",
+            self.names.join(", ")
+        );
         Ok(())
     }
 }

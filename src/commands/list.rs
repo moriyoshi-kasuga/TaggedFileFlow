@@ -6,9 +6,13 @@ use super::{List, Run};
 
 impl Run for List {
     fn run(&self) -> anyhow::Result<()> {
-        match &self.name {
-            Some(name) => doc(name),
-            None => all(),
+        if self.names.is_empty() {
+            all()
+        } else {
+            for name in &self.names {
+                doc(name)?;
+            }
+            Ok(())
         }
     }
 }
