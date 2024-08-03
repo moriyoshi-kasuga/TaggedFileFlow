@@ -17,6 +17,8 @@ jobs:
       tag: ${{ steps.read_toml.outputs.value }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: SebRollen/toml-action@v1.2.0
         id: read_toml
         with:
