@@ -86,9 +86,8 @@ impl Data {
 
 fn get_file() -> anyhow::Result<PathBuf> {
     let mut cache = dirs::cache_dir().with_context(|| "not exists cache directory")?;
-    cache.push(env!("CARGO_PKG_NAME"));
-    fs::create_dir_all(&cache)?;
-    cache.push("documents.json");
+    fs::create_dir_all(&cache).with_context(|| "failed to create cache directory")?;
+    cache.push("tagged-file-flow-documents.json");
     if !cache.exists() {
         let _ = fs::write(&cache, "{}");
     }

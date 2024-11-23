@@ -1,4 +1,7 @@
-use std::{fs, path::PathBuf};
+use std::{
+    fs,
+    path::{Path, PathBuf},
+};
 
 use anyhow::Context;
 
@@ -21,10 +24,18 @@ impl Run for Paste {
                 let to = current.clone().join(path);
                 match doc.save {
                     SaveType::MV => {
-                        fs::rename(from, to)?;
+                        if file.is_file() {
+                            fs::rename(from, to)?;
+                        } else {
+                            run_to_dir_all(from, to, fs::rename)?;
+                        }
                     }
                     SaveType::CP => {
-                        fs::copy(from, to)?;
+                        if file.is_file() {
+                            fs::copy(from, to)?;
+                        } else {
+                            run_to_dir_all(from, to, |from, to| fs::copy(from, to).map(|_| ()))?;
+                        }
                     }
                 };
             }
@@ -33,4 +44,22 @@ impl Run for Paste {
         data.save()?;
         Ok(())
     }
+}
+
+fn run_to_dir_all(
+    src: impl AsRef<Path>,
+    dst: impl AsRef<Path>,
+    func: fn(PathBuf, PathBuf) -> std::io::Result<()>,
+) -> std::io::Result<()> {
+    fs::create_dir_all(&dst)?;
+    for entry in fs::read_dir(src)? {
+        let entry = entry?;
+        let ty = entry.file_type()?;
+        if ty.is_dir() {
+            run_to_dir_all(entry.path(), dst.as_ref().join(entry.file_name()), func)?;
+        } else {
+            func(entry.path(), dst.as_ref().join(entry.file_name()))?;
+        }
+    }
+    Ok(())
 }

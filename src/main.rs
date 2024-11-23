@@ -5,7 +5,6 @@ use clap::Parser;
 use color_print::cformat;
 use commands::{Commands, Run};
 
-mod asset;
 mod commands;
 mod data;
 

@@ -1,3 +1,5 @@
+#!/bin/sh
+
 alias tff='tagged_file_flow'
 
 alias mvg='tagged_file_flow mv'
