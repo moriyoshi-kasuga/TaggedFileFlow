@@ -6,11 +6,11 @@ use crate::data::Data;
 use super::{Del, Run};
 
 impl Run for Del {
-    fn run(&self) -> anyhow::Result<()> {
+    fn run(self) -> anyhow::Result<()> {
         let mut data = Data::default()?;
 
         for name in &self.names {
-            if !data.del(name) {
+            if data.del(name).is_none() {
                 return Err(anyhow!("not found {} document", name));
             }
         }
@@ -18,7 +18,7 @@ impl Run for Del {
         data.save()?;
 
         cprintln!(
-            "<green>successfully deleted {} document</green>",
+            "<green>successfully deleted <red>{}</red> document</green>",
             self.names.join(", ")
         );
         Ok(())

@@ -1,40 +1,61 @@
 use rand::seq::SliceRandom;
 use std::path::Path;
 
-use crate::data::{Data, Document, DocumentPath, SaveType};
+use crate::data::{show_doc, Data, Document, DocumentPath, SaveType};
 use anyhow::{anyhow, Context};
 
-use super::{list::send, Run, CP, MV};
+use super::{Run, CP, MV};
 
 impl Run for MV {
-    fn run(&self) -> anyhow::Result<()> {
-        action(SaveType::MV, self.files.clone(), self.name.clone())
+    fn run(self) -> anyhow::Result<()> {
+        action(SaveType::MV, self.files, self.name)
     }
 }
 impl Run for CP {
-    fn run(&self) -> anyhow::Result<()> {
-        action(SaveType::CP, self.files.clone(), self.name.clone())
+    fn run(self) -> anyhow::Result<()> {
+        action(SaveType::CP, self.files, self.name)
     }
 }
 
-fn action(save: SaveType, mut files: Vec<String>, name: Option<String>) -> anyhow::Result<()> {
-    files.sort();
+fn action(save: SaveType, files: Vec<String>, name: Option<String>) -> anyhow::Result<()> {
+    let current_path = std::env::current_dir()?
+        .to_str()
+        .with_context(|| "Parse Error of Path to String")?
+        .to_string();
+
+    let include_slash = current_path.clone() + "/";
+
     let mut saves: Vec<DocumentPath> = Vec::default();
     for f in files {
-        let path = Path::new(&f);
-        if !path.exists() {
-            return Err(anyhow!("{} is not exists", f));
+        match Path::new(&f).canonicalize()? {
+            path if !path.exists() => {
+                return Err(anyhow!("{} is not exists", f));
+            }
+            path if path.is_file() => {
+                saves.push(DocumentPath::File(
+                    path.into_os_string()
+                        .into_string()
+                        .map_err(|_| anyhow!("uft8 error"))?
+                        .strip_prefix(&include_slash)
+                        .with_context(|| "System Error")?
+                        .to_owned(),
+                ));
+            }
+            path if path.is_dir() => {
+                saves.push(DocumentPath::Dir(
+                    path.into_os_string()
+                        .into_string()
+                        .map_err(|_| anyhow!("uft8 error"))?
+                        .strip_prefix(&include_slash)
+                        .with_context(|| "System Error")?
+                        .to_owned(),
+                ));
+            }
+            _ => return Err(anyhow!("{} is not a file or dir", &f)),
         }
-        if path.is_file() {
-            saves.push(DocumentPath::File(f.to_string()));
-            continue;
-        }
-        if path.is_dir() {
-            saves.push(DocumentPath::Dir(f.trim_end_matches('/').to_string()));
-            continue;
-        }
-        return Err(anyhow!("{} is not a file or dir", &f));
     }
+    saves.sort();
+
     let mut current = 0;
     while current != saves.len() {
         let path = &saves[current];
@@ -42,10 +63,10 @@ fn action(save: SaveType, mut files: Vec<String>, name: Option<String>) -> anyho
             current += 1;
             continue;
         }
-        let path = path.to_path();
+        let path = path.as_path();
         let mut removal = vec![];
         for (index, f) in saves[(current + 1)..].iter().enumerate() {
-            if f.to_path().starts_with(&path) {
+            if f.as_path().starts_with(path) {
                 removal.push(index + current + 1);
             }
         }
@@ -90,15 +111,12 @@ fn action(save: SaveType, mut files: Vec<String>, name: Option<String>) -> anyho
         }
     }?;
     let doc = Document {
-        current: std::env::current_dir()?
-            .to_str()
-            .with_context(|| "Parse Error of Path to String")?
-            .to_string(),
+        current: current_path,
         name,
         save,
-        files: saves,
+        paths: saves,
     };
-    send(&doc);
+    show_doc(&doc);
     data.add(doc);
     data.save()?;
     Ok(())

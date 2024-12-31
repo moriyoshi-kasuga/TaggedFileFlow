@@ -1,43 +1,45 @@
 use anyhow::Context;
+use color_print::{cformat, cprintln, cstr};
 use serde::{Deserialize, Serialize};
 use std::{
     fs::{self},
     path::PathBuf,
 };
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Clone, Copy)]
 pub enum SaveType {
     MV,
     CP,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum DocumentPath {
     File(String),
     Dir(String),
 }
 
 impl DocumentPath {
-    pub fn to_path(&self) -> String {
+    pub fn as_path(&self) -> &str {
         match self {
-            DocumentPath::File(path) => path.to_string(),
-            DocumentPath::Dir(path) => path.to_string(),
+            DocumentPath::File(path) => path,
+            DocumentPath::Dir(path) => path,
         }
     }
+
     pub fn is_file(&self) -> bool {
         matches!(self, DocumentPath::File(_))
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct Document {
     pub current: String,
     pub name: String,
     pub save: SaveType,
-    pub files: Vec<DocumentPath>,
+    pub paths: Vec<DocumentPath>,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize)]
 pub struct Data {
     #[serde(default)]
     documents: Vec<Document>,
@@ -47,40 +49,37 @@ impl Data {
     pub fn add(&mut self, document: Document) {
         self.documents.push(document);
     }
+
     pub fn get(&self, name: &str) -> Option<&Document> {
         self.documents.iter().find(|document| document.name == name)
     }
-    pub fn del(&mut self, name: &str) -> bool {
-        let len = self.documents.len();
-        self.documents.retain(|document| document.name != name);
-        len != self.documents.len()
+
+    pub fn del(&mut self, name: &str) -> Option<Document> {
+        self.documents
+            .iter()
+            .position(|v| v.name == name)
+            .map(|v| self.documents.remove(v))
     }
-    pub fn pop(&mut self, name: &str) -> Option<Document> {
-        let doc = self.get(name);
-        match doc {
-            Some(doc) => {
-                let doc = doc.clone();
-                self.del(name);
-                Some(doc)
-            }
-            None => None,
-        }
+
+    pub fn is_empty(&self) -> bool {
+        self.documents.is_empty()
     }
-    pub fn all(&self) -> &Vec<Document> {
+
+    pub fn documents(&self) -> &Vec<Document> {
         &self.documents
     }
+
     pub fn save(&self) -> anyhow::Result<()> {
         fs::write(get_file()?, serde_json::to_string(self)?)?;
         Ok(())
     }
 
     pub fn default() -> anyhow::Result<Self> {
-        let data = &fs::read(get_file()?)?;
-        let data = String::from_utf8_lossy(data).to_string();
+        let data = fs::read(get_file()?)?;
         if data.is_empty() {
             return Ok(serde_json::from_str("{}")?);
         }
-        Ok(serde_json::from_str(&data)?)
+        Ok(serde_json::from_slice(&data)?)
     }
 }
 
@@ -89,7 +88,34 @@ fn get_file() -> anyhow::Result<PathBuf> {
     fs::create_dir_all(&cache).with_context(|| "failed to create cache directory")?;
     cache.push("tagged-file-flow-documents.json");
     if !cache.exists() {
-        let _ = fs::write(&cache, "{}");
+        fs::write(&cache, "{}")?;
     }
     Ok(cache)
+}
+
+pub fn show_doc(doc: &Document) {
+    let save_type = match doc.save {
+        SaveType::MV => cstr!("<blue>Move"),
+        SaveType::CP => cstr!("<yellow>Copy"),
+    };
+    println!();
+    cprintln!(
+        r###"<white>=> </>{}: <red>{}</> on <white>[{}]</>"###,
+        save_type,
+        doc.name,
+        doc.current,
+    );
+    for path in &doc.paths {
+        let doc_type = match path {
+            DocumentPath::File(path) => {
+                let opt = path.rsplit_once('/');
+                match opt {
+                    Some((path, file)) => cformat!("<cyan>{}/<green!>{}", path, file),
+                    None => cformat!("<green!>{}", path),
+                }
+            }
+            DocumentPath::Dir(path) => cformat!("<cyan>{}/", path),
+        };
+        cprintln!(" <white>-</white> {}", doc_type);
+    }
 }
