@@ -1,32 +1,22 @@
 # tagged file flow
 
-`tff` was created for people who find the mv and cp commands in the CLI a pain in the ass. (myself included).
-You can save a file with a name, and then use [zoxide](https://github.com/ajeetdsouza/zoxide) or [fzf](https://github.com/junegunn/fzf) to quickly move the file to a new directory, paste the saved file, and you are done.
-A quick directory move, paste in the saved files, and you're done.
+`tff` is designed for those who find the mv and cp commands in the CLI frustrating (myself included).
+It simplifies file management by allowing you to save a file under a random characters or specific name
+and then use tools like [zoxide](https://github.com/ajeetdsouza/zoxide) or [fzf](https://github.com/junegunn/fzf) to quickly navigate directories.
+Once there, you can paste the saved file into the target location —quick and efficient.
 
 ## Getting started
 
 ```sh
-mvg foo bar # foo and bar are stored with random characters
+mvg sample.txt sample_folder # sample.txt and sample_folder are stored with random characters
 cpg copy.txt -n copy # Saved copy.txt under the name copy
-# Change the directory with zoxide or something.
-pasteg [random character] # moved foo and bar.
+# Change directory using zoxide, fzf, etc.
+pasteg [random character] # moved sample.txt and sample_folder to the current directory
 pasteg copy # copied copy.txt
 # The process is now complete.
 ```
 
 ## Alias
-
-<details>
-<summary>To use alias, do the following</summary>
-
-> Add this to the <ins>**end**</ins> of your config file (usually `~/.zshrc`):
->
-> ```sh
-> eval "$(tagged_file_flow init zsh)"
-> ```
-
-</details>
 
 ```sh
 tagged_file_flow # default command
@@ -36,3 +26,14 @@ cpg   # alias of tff cp
 listg # alias of tff list
 delg  # alias of tff del
 ```
+
+<details open>
+<summary>To use alias, do the following</summary>
+
+> Add this to your config file (usually `~/.zshrc` or `~/.bashrc`):
+>
+> ```sh
+> eval "$(tagged_file_flow init zsh)"
+> ```
+
+</details>
