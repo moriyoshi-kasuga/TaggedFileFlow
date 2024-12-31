@@ -16,6 +16,8 @@ pasteg copy # copied copy.txt
 # The process is now complete.
 ```
 
+[Sample](https://github.com/user-attachments/assets/bc682bb0-42d4-417e-9701-0964f60c14ab)
+
 ## Alias
 
 ```sh
