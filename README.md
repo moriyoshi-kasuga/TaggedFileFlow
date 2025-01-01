@@ -18,6 +18,10 @@ pasteg copy # copied copy.txt
 
 [Sample](https://github.com/user-attachments/assets/bc682bb0-42d4-417e-9701-0964f60c14ab)
 
+## Installation
+
+- cargo: `cargo install --git https://github.com/moriyoshi-kasuga/TaggedFileFlow`
+
 ## Alias
 
 ```sh
