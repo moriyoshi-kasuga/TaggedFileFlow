@@ -87,7 +87,7 @@ fn action(save: SaveType, files: Vec<String>, name: Option<String>) -> anyhow::R
         None => {
             let max_depth = 3;
             let mut stack = vec![String::new()];
-            let random = &mut rand::thread_rng();
+            let random = &mut rand::rng();
 
             'outer: loop {
                 if stack.is_empty() {
