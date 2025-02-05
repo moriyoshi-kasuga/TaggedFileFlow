@@ -1,4 +1,4 @@
-use std::{fs, path::PathBuf};
+use std::path::PathBuf;
 
 use anyhow::Context;
 use color_print::cprintln;
@@ -32,17 +32,16 @@ impl Run for Paste {
                 }
                 match (doc.save, doc_path.is_file()) {
                     (SaveType::MV, true) => {
-                        fs::rename(from, to)?;
+                        fs_more::file::move_file(from, to, Default::default())?;
                     }
                     (SaveType::MV, false) => {
-                        run_to_dir_all(from, to, fs::rename)?;
-                        fs::remove_dir(from)?;
+                        fs_more::directory::move_directory(from, to, Default::default())?;
                     }
                     (SaveType::CP, true) => {
-                        fs::copy(from, to)?;
+                        fs_more::file::copy_file(from, to, Default::default())?;
                     }
                     (SaveType::CP, false) => {
-                        run_to_dir_all(from, to, |from, to| fs::copy(from, to).map(|_| ()))?;
+                        fs_more::directory::copy_directory(from, to, Default::default())?;
                     }
                 };
             }
@@ -51,22 +50,4 @@ impl Run for Paste {
         data.save()?;
         Ok(())
     }
-}
-
-fn run_to_dir_all(
-    src: &PathBuf,
-    dst: &PathBuf,
-    func: fn(PathBuf, PathBuf) -> std::io::Result<()>,
-) -> std::io::Result<()> {
-    fs::create_dir_all(dst)?;
-    for entry in fs::read_dir(src)? {
-        let entry = entry?;
-        let ty = entry.file_type()?;
-        if ty.is_dir() {
-            run_to_dir_all(&entry.path(), &dst.join(entry.file_name()), func)?;
-        } else {
-            func(entry.path(), dst.join(entry.file_name()))?;
-        }
-    }
-    Ok(())
 }
