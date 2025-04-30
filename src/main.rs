@@ -1,8 +1,6 @@
-use std::io::{self, Write};
 use std::{env, process::ExitCode};
 
 use clap::Parser;
-use color_print::cformat;
 use commands::{Commands, Run};
 
 mod commands;
@@ -15,7 +13,7 @@ fn main() -> ExitCode {
     match Commands::parse().run() {
         Ok(()) => ExitCode::SUCCESS,
         Err(e) => {
-            _ = writeln!(io::stderr(), "{}", cformat!("<red>error:</> {:?}", e));
+            color_print::ceprint!("<red>error</>: {:?}", e);
             ExitCode::FAILURE
         }
     }
