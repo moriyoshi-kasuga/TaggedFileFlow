@@ -25,7 +25,7 @@ pub enum Commands {
     /// show list
     List(List),
     /// init alias
-    Init(Init),
+    Init(init::Init),
 }
 
 #[derive(Parser)]
@@ -74,10 +74,6 @@ pub struct Del {
     #[clap(num_args = 1.., required = true)]
     pub names: Vec<String>,
 }
-
-#[derive(Parser)]
-#[command(about)]
-pub struct Init {}
 
 impl Run for Commands {
     fn run(self) -> Result<()> {
