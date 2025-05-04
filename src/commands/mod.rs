@@ -15,64 +15,17 @@ pub trait Run {
 #[clap(about, version)]
 pub enum Commands {
     /// mv to global
-    MV(MV),
+    MV(save::MV),
     /// cp to global
-    CP(CP),
+    CP(save::CP),
     /// paste from list
-    Paste(Paste),
+    Paste(paste::Paste),
     /// delete from list
-    Del(Del),
+    Del(del::Del),
     /// show list
-    List(List),
+    List(list::List),
     /// init alias
     Init(init::Init),
-}
-
-#[derive(Parser)]
-#[command(about)]
-pub struct Paste {
-    /// Names of files
-    #[clap(num_args = 1.., required = true)]
-    pub names: Vec<String>,
-    /// If doc is a file, override If doc is a directory, merge the contents of the folder
-    #[clap(short, long)]
-    pub force: bool,
-}
-
-#[derive(Parser)]
-#[command(about)]
-pub struct CP {
-    /// Names of files [default: Random characters in the range a to z]
-    #[arg(short, long)]
-    pub name: Option<String>,
-    /// Path to files
-    #[clap(num_args = 1.., required = true)]
-    pub files: Vec<String>,
-}
-#[derive(Parser)]
-#[command(about)]
-pub struct MV {
-    /// Names of files [default: Random characters in the range a to z]
-    #[arg(short, long)]
-    pub name: Option<String>,
-    /// Path to files
-    #[clap(num_args = 1.., required = true)]
-    pub files: Vec<String>,
-}
-
-#[derive(Parser)]
-#[command(about)]
-pub struct List {
-    /// Names of files
-    pub names: Vec<String>,
-}
-
-#[derive(Parser)]
-#[command(about)]
-pub struct Del {
-    /// Names of files
-    #[clap(num_args = 1.., required = true)]
-    pub names: Vec<String>,
 }
 
 impl Run for Commands {

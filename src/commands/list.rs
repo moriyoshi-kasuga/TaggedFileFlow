@@ -1,25 +1,33 @@
-use crate::data::{show_doc, Data};
+use crate::data::{show_block, Data};
 use anyhow::{Context, Ok};
+use clap::Parser;
 use color_print::cprintln;
 
-use super::{List, Run};
+use super::Run;
+
+#[derive(Parser)]
+#[command(about)]
+pub struct List {
+    /// Names of files
+    pub names: Vec<String>,
+}
 
 impl Run for List {
     fn run(self) -> anyhow::Result<()> {
-        let data = Data::default()?;
+        let data = Data::load()?;
         if self.names.is_empty() {
             if data.is_empty() {
                 cprintln!("<white>no documents");
             }
-            for doc in data.documents() {
-                show_doc(doc);
+            for block in data.blocks() {
+                show_block(block);
             }
         } else {
             for name in &self.names {
                 let doc = data
                     .get(name)
                     .with_context(|| format!("not found {} document", name))?;
-                show_doc(doc);
+                show_block(doc);
             }
         }
         Ok(())
