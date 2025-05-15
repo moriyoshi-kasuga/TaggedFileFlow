@@ -1,6 +1,6 @@
 use clap::Parser;
 use rand::seq::SliceRandom;
-use std::path::Path;
+use std::path::PathBuf;
 
 use crate::data::{show_block, Data, Document, DocumentBlock, SaveType};
 use anyhow::anyhow;
@@ -44,9 +44,9 @@ fn action(save: SaveType, files: Vec<String>, name: Option<String>) -> anyhow::R
 
     let mut saves: Vec<Document> = Vec::default();
     for f in files {
-        match Path::new(&f).canonicalize()? {
+        match PathBuf::from(f) {
             path if !path.exists() => {
-                return Err(anyhow!("{} is not exists", f));
+                return Err(anyhow!("{} is not exists", path.display()));
             }
             path if path.is_file() => {
                 saves.push(Document::File(path));
@@ -54,7 +54,7 @@ fn action(save: SaveType, files: Vec<String>, name: Option<String>) -> anyhow::R
             path if path.is_dir() => {
                 saves.push(Document::Dir(path));
             }
-            _ => return Err(anyhow!("{} is not a file or dir", &f)),
+            path => return Err(anyhow!("{} is not a file or dir", path.display())),
         }
     }
     saves.sort();

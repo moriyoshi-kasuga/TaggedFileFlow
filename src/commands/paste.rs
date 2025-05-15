@@ -1,5 +1,3 @@
-use std::path::PathBuf;
-
 use anyhow::Context;
 use clap::Parser;
 use color_print::cprintln;
@@ -29,16 +27,15 @@ impl Run for Paste {
                 .del(name)
                 .with_context(|| format!("not found {} document", name))?;
 
-            let from = PathBuf::from(&doc.current);
             for doc_path in &doc.documents {
                 let path = doc_path.as_path();
-                let from = &from.clone().join(path);
-                let to = &current.clone().join(path);
+                let from = doc.current.join(path);
+                let to = current.join(path);
                 if !self.force && to.exists() {
                     cprintln!(
                         "<red>{} is exists <white>{}</white>",
                         if doc_path.is_file() { "file" } else { "folder" },
-                        path.display()
+                        to.display()
                     );
                     continue;
                 }
