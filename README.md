@@ -36,7 +36,8 @@ delg  # alias of tff del
 <details open>
 <summary>To use alias, do the following</summary>
 
-> Add this to your config file (usually `~/.zshrc` or `~/.bashrc`):
+> Add this to your config file (usually `~/.zshrc` on zsh, `~/.bashrc` on bash, etc.)
+> supports zsh, bash, fish, and nushell
 >
 > ```sh
 > eval "$(tagged_file_flow init zsh)"
