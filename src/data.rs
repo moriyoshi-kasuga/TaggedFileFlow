@@ -45,23 +45,31 @@ pub struct Data {
 
 impl Data {
     pub fn add(&mut self, document: DocumentBlock) -> anyhow::Result<()> {
-        if self.blocks.iter().any(|block| block.name == document.name) {
-            anyhow::bail!("document with name {} already exists", document.name);
+        if self.contains_name(&document.name) {
+            anyhow::bail!("document with name '{}' already exists", document.name);
         }
         self.blocks.push(document);
         Ok(())
+    }
+
+    fn contains_name(&self, name: &str) -> bool {
+        self.blocks.iter().any(|block| block.name == name)
     }
 
     pub fn get(&self, name: &str) -> Option<&DocumentBlock> {
         self.blocks.iter().find(|block| block.name == name)
     }
 
+    #[allow(dead_code)]
+    pub fn get_mut(&mut self, name: &str) -> Option<&mut DocumentBlock> {
+        self.blocks.iter_mut().find(|block| block.name == name)
+    }
+
     pub fn del(&mut self, name: &str) -> Option<DocumentBlock> {
-        if let Some(pos) = self.blocks.iter().position(|block| block.name == name) {
-            Some(self.blocks.remove(pos))
-        } else {
-            None
-        }
+        self.blocks
+            .iter()
+            .position(|block| block.name == name)
+            .map(|pos| self.blocks.remove(pos))
     }
 
     pub fn is_empty(&self) -> bool {
