@@ -33,17 +33,17 @@ pub struct MV {
 
 impl Run for MV {
     fn run(self) -> anyhow::Result<()> {
-        action(SaveType::MV, self.files, self.name)
+        execute_save(SaveType::MV, self.files, self.name)
     }
 }
 
 impl Run for CP {
     fn run(self) -> anyhow::Result<()> {
-        action(SaveType::CP, self.files, self.name)
+        execute_save(SaveType::CP, self.files, self.name)
     }
 }
 
-fn action(save: SaveType, files: Vec<String>, name: Option<String>) -> anyhow::Result<()> {
+fn execute_save(save: SaveType, files: Vec<String>, name: Option<String>) -> anyhow::Result<()> {
     let current_path = std::env::current_dir()?;
     let documents = collect_documents(files)?;
     let deduplicated_documents = remove_nested_paths(documents);
