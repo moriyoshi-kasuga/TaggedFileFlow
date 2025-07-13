@@ -104,6 +104,22 @@ fn get_file() -> anyhow::Result<PathBuf> {
     if !cache.exists() {
         std::fs::write(&cache, "{}")
             .with_context(|| format!("failed to create file: {}", cache.display()))?;
+    } else {
+        let metadata = std::fs::metadata(&cache)
+            .with_context(|| format!("failed to read metadata for file: {}", cache.display()))?;
+        if !metadata.is_file() {
+            anyhow::bail!(
+                "expected a file at {}, but it is not a file",
+                cache.display()
+            );
+        }
+        let file_size = metadata.len();
+
+        if file_size == 0 {
+            // If the file is empty, we can write an empty JSON object to it
+            std::fs::write(&cache, "{}")
+                .with_context(|| format!("failed to write to file: {}", cache.display()))?;
+        }
     }
     Ok(cache)
 }
