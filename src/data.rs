@@ -3,7 +3,7 @@ use color_print::{cformat, cprintln, cstr};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
-#[derive(Serialize, Deserialize, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Document {
     File(PathBuf),
     Dir(PathBuf),
@@ -45,23 +45,31 @@ pub struct Data {
 
 impl Data {
     pub fn add(&mut self, document: DocumentBlock) -> anyhow::Result<()> {
-        if self.blocks.iter().any(|block| block.name == document.name) {
-            anyhow::bail!("document with name {} already exists", document.name);
+        if self.contains_name(&document.name) {
+            anyhow::bail!("document with name '{}' already exists", document.name);
         }
         self.blocks.push(document);
         Ok(())
+    }
+
+    fn contains_name(&self, name: &str) -> bool {
+        self.blocks.iter().any(|block| block.name == name)
     }
 
     pub fn get(&self, name: &str) -> Option<&DocumentBlock> {
         self.blocks.iter().find(|block| block.name == name)
     }
 
+    #[allow(dead_code)]
+    pub fn get_mut(&mut self, name: &str) -> Option<&mut DocumentBlock> {
+        self.blocks.iter_mut().find(|block| block.name == name)
+    }
+
     pub fn del(&mut self, name: &str) -> Option<DocumentBlock> {
-        if let Some(pos) = self.blocks.iter().position(|block| block.name == name) {
-            Some(self.blocks.remove(pos))
-        } else {
-            None
-        }
+        self.blocks
+            .iter()
+            .position(|block| block.name == name)
+            .map(|pos| self.blocks.remove(pos))
     }
 
     pub fn is_empty(&self) -> bool {
@@ -96,6 +104,22 @@ fn get_file() -> anyhow::Result<PathBuf> {
     if !cache.exists() {
         std::fs::write(&cache, "{}")
             .with_context(|| format!("failed to create file: {}", cache.display()))?;
+    } else {
+        let metadata = std::fs::metadata(&cache)
+            .with_context(|| format!("failed to read metadata for file: {}", cache.display()))?;
+        if !metadata.is_file() {
+            anyhow::bail!(
+                "expected a file at {}, but it is not a file",
+                cache.display()
+            );
+        }
+        let file_size = metadata.len();
+
+        if file_size == 0 {
+            // If the file is empty, we can write an empty JSON object to it
+            std::fs::write(&cache, "{}")
+                .with_context(|| format!("failed to write to file: {}", cache.display()))?;
+        }
     }
     Ok(cache)
 }

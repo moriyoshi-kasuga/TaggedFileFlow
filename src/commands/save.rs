@@ -2,10 +2,12 @@ use clap::Parser;
 use rand::seq::SliceRandom;
 use std::path::PathBuf;
 
-use crate::data::{show_block, Data, Document, DocumentBlock, SaveType};
+use crate::data::{Data, Document, DocumentBlock, SaveType, show_block};
 use anyhow::anyhow;
 
 use super::Run;
+
+const MAX_NAME_DEPTH: usize = 3;
 
 #[derive(Parser)]
 #[command(about)]
@@ -17,6 +19,7 @@ pub struct CP {
     #[clap(num_args = 1.., required = true)]
     pub files: Vec<String>,
 }
+
 #[derive(Parser)]
 #[command(about)]
 pub struct MV {
@@ -30,97 +33,207 @@ pub struct MV {
 
 impl Run for MV {
     fn run(self) -> anyhow::Result<()> {
-        action(SaveType::MV, self.files, self.name)
+        execute_save(SaveType::MV, self.files, self.name)
     }
 }
+
 impl Run for CP {
     fn run(self) -> anyhow::Result<()> {
-        action(SaveType::CP, self.files, self.name)
+        execute_save(SaveType::CP, self.files, self.name)
     }
 }
 
-fn action(save: SaveType, files: Vec<String>, name: Option<String>) -> anyhow::Result<()> {
+fn execute_save(save: SaveType, files: Vec<String>, name: Option<String>) -> anyhow::Result<()> {
     let current_path = std::env::current_dir()?;
+    let documents = collect_documents(files)?;
+    let deduplicated_documents = remove_nested_paths(documents);
 
-    let mut saves: Vec<Document> = Vec::default();
-    for f in files {
-        match PathBuf::from(f) {
-            path if !path.exists() => {
-                return Err(anyhow!("{} is not exists", path.display()));
-            }
-            path if path.is_file() => {
-                saves.push(Document::File(path));
-            }
-            path if path.is_dir() => {
-                saves.push(Document::Dir(path));
-            }
-            path => return Err(anyhow!("{} is not a file or dir", path.display())),
-        }
-    }
-    saves.sort();
-
-    let mut current = 0;
-    while current != saves.len() {
-        let path = &saves[current];
-        if path.is_file() {
-            current += 1;
-            continue;
-        }
-        let path = path.as_path();
-        let mut removal = vec![];
-        for (index, f) in saves[(current + 1)..].iter().enumerate() {
-            if f.as_path().starts_with(path) {
-                removal.push(index + current + 1);
-            }
-        }
-        removal.into_iter().rev().for_each(|i| {
-            saves.remove(i);
-        });
-        current += 1;
-    }
     let mut data = Data::load()?;
-    let name = match name {
-        Some(name) => {
-            if data.get(&name).is_some() {
-                Err(anyhow!("document {} is already exists", name))
-            } else {
-                Ok(name)
-            }
-        }
-        None => {
-            let max_depth = 3;
-            let mut stack = vec![String::new()];
-            let random = &mut rand::rng();
+    let document_name = resolve_document_name(&data, name)?;
 
-            'outer: loop {
-                if stack.is_empty() {
-                    break Err(anyhow!("document name is not specified"));
-                }
-                let prefix = stack.remove(0);
-                let should_push = prefix.len() + 1 != max_depth;
-                let mut chars: Vec<char> = ('a'..='z').collect();
-                chars.shuffle(random);
-                for c in chars {
-                    let mut new_prefix = prefix.clone();
-                    new_prefix.push(c);
-                    if data.get(&new_prefix).is_none() {
-                        break 'outer Ok(new_prefix);
-                    }
-                    if should_push {
-                        stack.push(new_prefix)
-                    }
-                }
-            }
-        }
-    }?;
     let doc = DocumentBlock {
         current: current_path,
-        name,
+        name: document_name,
         save,
-        documents: saves,
+        documents: deduplicated_documents,
     };
+
     show_block(&doc);
     data.add(doc)?;
     data.save()?;
     Ok(())
+}
+
+fn collect_documents(files: Vec<String>) -> anyhow::Result<Vec<Document>> {
+    let mut documents = Vec::with_capacity(files.len());
+
+    for file in files {
+        let path = PathBuf::from(file);
+
+        if !path.exists() {
+            return Err(anyhow!("{} does not exist", path.display()));
+        }
+
+        let document = if path.is_file() {
+            Document::File(path)
+        } else if path.is_dir() {
+            Document::Dir(path)
+        } else {
+            return Err(anyhow!("{} is not a file or directory", path.display()));
+        };
+
+        documents.push(document);
+    }
+
+    documents.sort();
+    Ok(documents)
+}
+
+fn remove_nested_paths(mut documents: Vec<Document>) -> Vec<Document> {
+    let mut current = 0;
+
+    while current < documents.len() {
+        let current_doc = &documents[current];
+
+        if current_doc.is_file() {
+            current += 1;
+            continue;
+        }
+
+        let current_path = current_doc.as_path();
+        let mut indices_to_remove = Vec::new();
+
+        for (index, doc) in documents[(current + 1)..].iter().enumerate() {
+            if doc.as_path().starts_with(current_path) {
+                indices_to_remove.push(index + current + 1);
+            }
+        }
+
+        for &index in indices_to_remove.iter().rev() {
+            documents.remove(index);
+        }
+
+        current += 1;
+    }
+
+    documents
+}
+
+fn resolve_document_name(data: &Data, name: Option<String>) -> anyhow::Result<String> {
+    match name {
+        Some(name) => {
+            if data.get(&name).is_some() {
+                Err(anyhow!("document '{}' already exists", name))
+            } else {
+                Ok(name)
+            }
+        }
+        None => generate_unique_name(data),
+    }
+}
+
+fn generate_unique_name(data: &Data) -> anyhow::Result<String> {
+    let mut stack = vec![String::new()];
+    let mut rng = rand::rng();
+
+    loop {
+        if stack.is_empty() {
+            return Err(anyhow!("failed to generate unique document name"));
+        }
+
+        let prefix = stack.remove(0);
+        let should_expand = prefix.len() + 1 < MAX_NAME_DEPTH;
+
+        let mut chars: Vec<char> = ('a'..='z').collect();
+        chars.shuffle(&mut rng);
+
+        for c in chars {
+            let candidate = format!("{prefix}{c}");
+
+            if data.get(&candidate).is_none() {
+                return Ok(candidate);
+            }
+
+            if should_expand {
+                stack.push(candidate);
+            }
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::path::PathBuf;
+
+    #[test]
+    fn test_collect_documents() {
+        let files = vec![
+            "src/commands/save.rs".to_string(),
+            "src/data.rs".to_string(),
+        ];
+        let actual = collect_documents(files).unwrap();
+        assert_eq!(actual.len(), 2);
+        assert!(actual[0].is_file());
+        assert!(actual[1].is_file());
+    }
+
+    #[test]
+    fn test_collect_documents_nonexistent() {
+        let files = vec!["nonexistent_file.txt".to_string()];
+        let result = collect_documents(files);
+        assert!(result.is_err());
+        assert_eq!(
+            result.unwrap_err().to_string(),
+            "nonexistent_file.txt does not exist"
+        );
+    }
+
+    #[test]
+    fn test_remove_nested_paths_single_file() {
+        let documents = vec![Document::File(PathBuf::from("a/b"))];
+        let actual = remove_nested_paths(documents);
+        assert_eq!(actual, vec![Document::File(PathBuf::from("a/b"))]);
+    }
+
+    #[test]
+    fn test_remove_nested_paths_single_dir() {
+        let documents = vec![Document::Dir(PathBuf::from("a"))];
+        let actual = remove_nested_paths(documents);
+        assert_eq!(actual, vec![Document::Dir(PathBuf::from("a"))]);
+    }
+
+    #[test]
+    fn test_remove_nested_paths_no_nested() {
+        let documents = vec![
+            Document::File(PathBuf::from("a/b")),
+            Document::File(PathBuf::from("c/d")),
+        ];
+        let actual = remove_nested_paths(documents.clone());
+        assert_eq!(actual, documents);
+    }
+
+    #[test]
+    fn test_remove_nested_paths_empty() {
+        let documents: Vec<Document> = vec![];
+        let actual = remove_nested_paths(documents);
+        assert!(actual.is_empty());
+    }
+
+    #[test]
+    fn test_remove_nested_paths() {
+        let documents = vec![
+            Document::Dir(PathBuf::from("a")),
+            Document::File(PathBuf::from("a/b")),
+            Document::Dir(PathBuf::from("a/c")),
+            Document::File(PathBuf::from("a/c/d")),
+            Document::File(PathBuf::from("b")),
+        ];
+        let actual = remove_nested_paths(documents);
+        let expected = vec![
+            Document::Dir(PathBuf::from("a")),
+            Document::File(PathBuf::from("b")),
+        ];
+        assert_eq!(actual, expected);
+    }
 }

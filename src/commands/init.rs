@@ -31,7 +31,7 @@ impl Run for Init {
             Shell::Nushell => NU,
         };
 
-        println!("{}", shell);
+        println!("{shell}");
 
         Ok(())
     }

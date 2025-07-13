@@ -20,7 +20,7 @@ impl Run for Del {
 
         for name in &self.names {
             if data.del(name).is_none() {
-                return Err(anyhow!("not found {} document", name));
+                return Err(anyhow!("document '{name}' not found"));
             }
         }
 

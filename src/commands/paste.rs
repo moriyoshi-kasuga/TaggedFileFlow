@@ -2,7 +2,7 @@ use anyhow::Context;
 use clap::Parser;
 use color_print::cprintln;
 
-use crate::data::{show_block, Data, Document, SaveType};
+use crate::data::{Data, Document, SaveType, show_block};
 
 use super::Run;
 
@@ -25,7 +25,7 @@ impl Run for Paste {
         for name in &self.names {
             let doc = data
                 .del(name)
-                .with_context(|| format!("not found {} document", name))?;
+                .with_context(|| format!("document '{name}' not found"))?;
 
             for doc_path in &doc.documents {
                 let path = doc_path.as_path();
