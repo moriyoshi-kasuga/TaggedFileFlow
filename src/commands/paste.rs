@@ -25,7 +25,7 @@ impl Run for Paste {
         for name in &self.names {
             let doc = data
                 .del(name)
-                .with_context(|| format!("not found {} document", name))?;
+                .with_context(|| format!("not found {name} document"))?;
 
             for doc_path in &doc.documents {
                 let path = doc_path.as_path();

@@ -26,7 +26,7 @@ impl Run for List {
             for name in &self.names {
                 let doc = data
                     .get(name)
-                    .with_context(|| format!("not found {} document", name))?;
+                    .with_context(|| format!("not found {name} document"))?;
                 show_block(doc);
             }
         }

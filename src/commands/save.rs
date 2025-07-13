@@ -148,7 +148,7 @@ fn generate_unique_name(data: &Data) -> anyhow::Result<String> {
         chars.shuffle(&mut rng);
 
         for c in chars {
-            let candidate = format!("{}{}", prefix, c);
+            let candidate = format!("{prefix}{c}");
 
             if data.get(&candidate).is_none() {
                 return Ok(candidate);
