@@ -3,7 +3,7 @@ use color_print::{cformat, cprintln, cstr};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
-#[derive(Serialize, Deserialize, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Document {
     File(PathBuf),
     Dir(PathBuf),

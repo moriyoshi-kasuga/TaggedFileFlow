@@ -2,7 +2,7 @@ use clap::Parser;
 use rand::seq::SliceRandom;
 use std::path::PathBuf;
 
-use crate::data::{show_block, Data, Document, DocumentBlock, SaveType};
+use crate::data::{Data, Document, DocumentBlock, SaveType, show_block};
 use anyhow::anyhow;
 
 use super::Run;
@@ -158,5 +158,28 @@ fn generate_unique_name(data: &Data) -> anyhow::Result<String> {
                 stack.push(candidate);
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::path::PathBuf;
+
+    #[test]
+    fn test_remove_nested_paths() {
+        let documents = vec![
+            Document::Dir(PathBuf::from("a")),
+            Document::File(PathBuf::from("a/b")),
+            Document::Dir(PathBuf::from("a/c")),
+            Document::File(PathBuf::from("a/c/d")),
+            Document::File(PathBuf::from("b")),
+        ];
+        let actual = remove_nested_paths(documents);
+        let expected = vec![
+            Document::Dir(PathBuf::from("a")),
+            Document::File(PathBuf::from("b")),
+        ];
+        assert_eq!(actual, expected);
     }
 }
