@@ -1,4 +1,4 @@
-use crate::data::{show_block, Data};
+use crate::data::{Data, show_block};
 use anyhow::{Context, Ok};
 use clap::Parser;
 use color_print::cprintln;
@@ -26,7 +26,7 @@ impl Run for List {
             for name in &self.names {
                 let doc = data
                     .get(name)
-                    .with_context(|| format!("not found {name} document"))?;
+                    .with_context(|| format!("document '{name}' not found"))?;
                 show_block(doc);
             }
         }
