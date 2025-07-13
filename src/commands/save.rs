@@ -167,6 +167,60 @@ mod tests {
     use std::path::PathBuf;
 
     #[test]
+    fn test_collect_documents() {
+        let files = vec![
+            "src/commands/save.rs".to_string(),
+            "src/data.rs".to_string(),
+        ];
+        let actual = collect_documents(files).unwrap();
+        assert_eq!(actual.len(), 2);
+        assert!(actual[0].is_file());
+        assert!(actual[1].is_file());
+    }
+
+    #[test]
+    fn test_collect_documents_nonexistent() {
+        let files = vec!["nonexistent_file.txt".to_string()];
+        let result = collect_documents(files);
+        assert!(result.is_err());
+        assert_eq!(
+            result.unwrap_err().to_string(),
+            "nonexistent_file.txt does not exist"
+        );
+    }
+
+    #[test]
+    fn test_remove_nested_paths_single_file() {
+        let documents = vec![Document::File(PathBuf::from("a/b"))];
+        let actual = remove_nested_paths(documents);
+        assert_eq!(actual, vec![Document::File(PathBuf::from("a/b"))]);
+    }
+
+    #[test]
+    fn test_remove_nested_paths_single_dir() {
+        let documents = vec![Document::Dir(PathBuf::from("a"))];
+        let actual = remove_nested_paths(documents);
+        assert_eq!(actual, vec![Document::Dir(PathBuf::from("a"))]);
+    }
+
+    #[test]
+    fn test_remove_nested_paths_no_nested() {
+        let documents = vec![
+            Document::File(PathBuf::from("a/b")),
+            Document::File(PathBuf::from("c/d")),
+        ];
+        let actual = remove_nested_paths(documents.clone());
+        assert_eq!(actual, documents);
+    }
+
+    #[test]
+    fn test_remove_nested_paths_empty() {
+        let documents: Vec<Document> = vec![];
+        let actual = remove_nested_paths(documents);
+        assert!(actual.is_empty());
+    }
+
+    #[test]
     fn test_remove_nested_paths() {
         let documents = vec![
             Document::Dir(PathBuf::from("a")),
