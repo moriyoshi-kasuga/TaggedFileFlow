@@ -2,7 +2,7 @@ use anyhow::Context;
 use clap::Parser;
 use color_print::cprintln;
 
-use crate::data::{Data, Document, SaveType, show_block};
+use crate::data::{show_block, Data, Document, SaveType};
 
 use super::Run;
 
@@ -17,42 +17,80 @@ pub struct Paste {
     pub force: bool,
 }
 
+fn transfer_document(
+    save: SaveType,
+    doc: &Document,
+    from: std::path::PathBuf,
+    to: std::path::PathBuf,
+) -> anyhow::Result<()> {
+    match (save, doc) {
+        (SaveType::MV, Document::File(_)) => {
+            fs_more::file::move_file(&from, &to, Default::default()).with_context(|| {
+                format!(
+                    "failed to move file '{}' to '{}'",
+                    from.display(),
+                    to.display()
+                )
+            })?;
+        }
+        (SaveType::MV, Document::Dir(_)) => {
+            fs_more::directory::move_directory(&from, &to, Default::default()).with_context(
+                || {
+                    format!(
+                        "failed to move directory '{}' to '{}'",
+                        from.display(),
+                        to.display()
+                    )
+                },
+            )?;
+        }
+        (SaveType::CP, Document::File(_)) => {
+            fs_more::file::copy_file(&from, &to, Default::default()).with_context(|| {
+                format!(
+                    "failed to copy file '{}' to '{}'",
+                    from.display(),
+                    to.display()
+                )
+            })?;
+        }
+        (SaveType::CP, Document::Dir(_)) => {
+            fs_more::directory::copy_directory(&from, &to, Default::default()).with_context(
+                || {
+                    format!(
+                        "failed to copy directory '{}' to '{}'",
+                        from.display(),
+                        to.display()
+                    )
+                },
+            )?;
+        }
+    }
+    Ok(())
+}
+
 impl Run for Paste {
     fn run(self) -> anyhow::Result<()> {
-        let current = std::env::current_dir()?;
+        let current = std::env::current_dir().context("failed to get current working directory")?;
         let mut data = Data::load()?;
 
         for name in &self.names {
             let doc = data
                 .del(name)
-                .with_context(|| format!("document '{name}' not found"))?;
+                .ok_or_else(|| anyhow::anyhow!("document '{}' not found", name))?;
 
-            for doc_path in &doc.documents {
-                let path = doc_path.as_path();
+            for doc_entry in &doc.documents {
+                let path = doc_entry.as_path();
                 let from = doc.current.join(path);
                 let to = current.join(path);
                 if !self.force && to.exists() {
                     cprintln!(
-                        "<red>{} is exists <white>{}</white>",
-                        if doc_path.is_file() { "file" } else { "folder" },
-                        to.display()
+                        "<red>{} already exists: <white>{}</>",
+                        doc_entry.type_label(),
+                        to.display(),
                     );
                     continue;
                 }
-                match (doc.save, doc_path) {
-                    (SaveType::MV, Document::File(_)) => {
-                        fs_more::file::move_file(from, to, Default::default())?;
-                    }
-                    (SaveType::MV, Document::Dir(_)) => {
-                        fs_more::directory::move_directory(from, to, Default::default())?;
-                    }
-                    (SaveType::CP, Document::File(_)) => {
-                        fs_more::file::copy_file(from, to, Default::default())?;
-                    }
-                    (SaveType::CP, Document::Dir(_)) => {
-                        fs_more::directory::copy_directory(from, to, Default::default())?;
-                    }
-                };
+                transfer_document(doc.save, doc_entry, from, to)?;
             }
             show_block(&doc);
         }

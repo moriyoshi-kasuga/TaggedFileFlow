@@ -1,5 +1,4 @@
-use crate::data::{Data, show_block};
-use anyhow::{Context, Ok};
+use crate::data::{show_block, Data};
 use clap::Parser;
 use color_print::cprintln;
 
@@ -17,7 +16,8 @@ impl Run for List {
         let data = Data::load()?;
         if self.names.is_empty() {
             if data.is_empty() {
-                cprintln!("<white>no documents");
+                cprintln!("<white>No documents saved</>");
+                return Ok(());
             }
             for block in data.blocks() {
                 show_block(block);
@@ -26,7 +26,7 @@ impl Run for List {
             for name in &self.names {
                 let doc = data
                     .get(name)
-                    .with_context(|| format!("document '{name}' not found"))?;
+                    .ok_or_else(|| anyhow::anyhow!("document '{}' not found", name))?;
                 show_block(doc);
             }
         }
