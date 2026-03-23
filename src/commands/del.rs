@@ -1,4 +1,3 @@
-use anyhow::anyhow;
 use clap::Parser;
 use color_print::cprintln;
 
@@ -20,14 +19,14 @@ impl Run for Del {
 
         for name in &self.names {
             if data.del(name).is_none() {
-                return Err(anyhow!("document '{name}' not found"));
+                anyhow::bail!("document '{}' not found", name);
             }
         }
 
         data.save()?;
 
         cprintln!(
-            "<green>successfully deleted <red>{}</red> document</green>",
+            "<green>Successfully deleted:</> <red>{}</>",
             self.names.join(", ")
         );
         Ok(())

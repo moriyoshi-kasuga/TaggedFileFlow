@@ -2,16 +2,15 @@ use clap::Parser;
 use rand::seq::SliceRandom;
 use std::path::PathBuf;
 
-use crate::data::{Data, Document, DocumentBlock, SaveType, show_block};
-use anyhow::anyhow;
+use crate::data::{show_block, Data, Document, DocumentBlock, SaveType};
+use anyhow::Context;
 
 use super::Run;
 
 const MAX_NAME_DEPTH: usize = 3;
 
-#[derive(Parser)]
-#[command(about)]
-pub struct CP {
+#[derive(Parser, Clone)]
+pub struct SaveArgs {
     /// Names of files [default: Random characters in the range a to z]
     #[arg(short, long)]
     pub name: Option<String>,
@@ -21,35 +20,39 @@ pub struct CP {
 }
 
 #[derive(Parser)]
-#[command(about)]
+#[command(about = "mv to global")]
 pub struct MV {
-    /// Names of files [default: Random characters in the range a to z]
-    #[arg(short, long)]
-    pub name: Option<String>,
-    /// Path to files
-    #[clap(num_args = 1.., required = true)]
-    pub files: Vec<String>,
+    #[clap(flatten)]
+    pub args: SaveArgs,
+}
+
+#[derive(Parser)]
+#[command(about = "cp to global")]
+pub struct CP {
+    #[clap(flatten)]
+    pub args: SaveArgs,
 }
 
 impl Run for MV {
     fn run(self) -> anyhow::Result<()> {
-        execute_save(SaveType::MV, self.files, self.name)
+        execute_save(SaveType::MV, self.args)
     }
 }
 
 impl Run for CP {
     fn run(self) -> anyhow::Result<()> {
-        execute_save(SaveType::CP, self.files, self.name)
+        execute_save(SaveType::CP, self.args)
     }
 }
 
-fn execute_save(save: SaveType, files: Vec<String>, name: Option<String>) -> anyhow::Result<()> {
-    let current_path = std::env::current_dir()?;
-    let documents = collect_documents(files)?;
+fn execute_save(save: SaveType, args: SaveArgs) -> anyhow::Result<()> {
+    let current_path =
+        std::env::current_dir().context("failed to get current working directory")?;
+    let documents = collect_documents(args.files)?;
     let deduplicated_documents = remove_nested_paths(documents);
 
     let mut data = Data::load()?;
-    let document_name = resolve_document_name(&data, name)?;
+    let document_name = resolve_document_name(&data, args.name)?;
 
     let doc = DocumentBlock {
         current: current_path,
@@ -68,18 +71,16 @@ fn collect_documents(files: Vec<String>) -> anyhow::Result<Vec<Document>> {
     let mut documents = Vec::with_capacity(files.len());
 
     for file in files {
-        let path = PathBuf::from(file);
-
-        if !path.exists() {
-            return Err(anyhow!("{} does not exist", path.display()));
-        }
+        let path = PathBuf::from(&file)
+            .canonicalize()
+            .with_context(|| format!("failed to resolve path '{file}'"))?;
 
         let document = if path.is_file() {
             Document::File(path)
         } else if path.is_dir() {
             Document::Dir(path)
         } else {
-            return Err(anyhow!("{} is not a file or directory", path.display()));
+            anyhow::bail!("'{}' is not a file or directory", path.display());
         };
 
         documents.push(document);
@@ -123,10 +124,9 @@ fn resolve_document_name(data: &Data, name: Option<String>) -> anyhow::Result<St
     match name {
         Some(name) => {
             if data.get(&name).is_some() {
-                Err(anyhow!("document '{}' already exists", name))
-            } else {
-                Ok(name)
+                anyhow::bail!("document '{}' already exists", name);
             }
+            Ok(name)
         }
         None => generate_unique_name(data),
     }
@@ -138,7 +138,7 @@ fn generate_unique_name(data: &Data) -> anyhow::Result<String> {
 
     loop {
         if stack.is_empty() {
-            return Err(anyhow!("failed to generate unique document name"));
+            anyhow::bail!("failed to generate unique document name (all candidates exhausted)");
         }
 
         let prefix = stack.remove(0);
@@ -183,9 +183,11 @@ mod tests {
         let files = vec!["nonexistent_file.txt".to_string()];
         let result = collect_documents(files);
         assert!(result.is_err());
-        assert_eq!(
-            result.unwrap_err().to_string(),
-            "nonexistent_file.txt does not exist"
+        let err = result.unwrap_err();
+        let msg = format!("{:#}", err);
+        assert!(
+            msg.contains("failed to resolve path 'nonexistent_file.txt'"),
+            "unexpected error message: {msg}"
         );
     }
 

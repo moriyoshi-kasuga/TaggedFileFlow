@@ -23,10 +23,8 @@ impl Run for Init {
         const NU: &str = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/templates/tff.nu"));
         const FISH: &str = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/templates/tff.fish"));
 
-        let shell: &str = match self.shell {
-            Shell::Bash => SH,
-            Shell::Posix => SH,
-            Shell::Zsh => SH,
+        let shell = match self.shell {
+            Shell::Bash | Shell::Posix | Shell::Zsh => SH,
             Shell::Fish => FISH,
             Shell::Nushell => NU,
         };

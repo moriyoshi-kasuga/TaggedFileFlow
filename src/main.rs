@@ -10,7 +10,7 @@ fn main() -> ExitCode {
     match Commands::parse().run() {
         Ok(()) => ExitCode::SUCCESS,
         Err(e) => {
-            color_print::ceprint!("<red>error</>: {:?}", e);
+            color_print::ceprintln!("<red>error</>: {:#}", e);
             ExitCode::FAILURE
         }
     }
