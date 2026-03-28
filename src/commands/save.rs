@@ -1,8 +1,8 @@
 use clap::Parser;
 use rand::seq::SliceRandom;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
-use crate::data::{show_block, Data, Document, DocumentBlock, SaveType};
+use crate::data::{Data, Document, DocumentBlock, SaveType, show_block};
 use anyhow::Context;
 
 use super::Run;
@@ -48,7 +48,7 @@ impl Run for CP {
 fn execute_save(save: SaveType, args: SaveArgs) -> anyhow::Result<()> {
     let current_path =
         std::env::current_dir().context("failed to get current working directory")?;
-    let documents = collect_documents(args.files)?;
+    let documents = collect_documents(&current_path, args.files)?;
     let deduplicated_documents = remove_nested_paths(documents);
 
     let mut data = Data::load()?;
@@ -67,15 +67,23 @@ fn execute_save(save: SaveType, args: SaveArgs) -> anyhow::Result<()> {
     Ok(())
 }
 
-fn collect_documents(files: Vec<String>) -> anyhow::Result<Vec<Document>> {
+fn collect_documents(current_path: &Path, files: Vec<String>) -> anyhow::Result<Vec<Document>> {
     let mut documents = Vec::with_capacity(files.len());
 
     for file in files {
         let path = PathBuf::from(&file)
             .canonicalize()
             .with_context(|| format!("failed to resolve path '{file}'"))?;
+        let is_file = path.is_file();
 
-        let document = if path.is_file() {
+        let path = path
+            .strip_prefix(current_path)
+            .with_context(|| {
+                format!("failed to resolve path '{file}' relative to current directory")
+            })?
+            .to_path_buf();
+
+        let document = if is_file {
             Document::File(path)
         } else if path.is_dir() {
             Document::Dir(path)
@@ -168,11 +176,12 @@ mod tests {
 
     #[test]
     fn test_collect_documents() {
+        let current_path = std::env::current_dir().unwrap();
         let files = vec![
             "src/commands/save.rs".to_string(),
             "src/data.rs".to_string(),
         ];
-        let actual = collect_documents(files).unwrap();
+        let actual = collect_documents(&current_path, files).unwrap();
         assert_eq!(actual.len(), 2);
         assert!(actual[0].is_file());
         assert!(actual[1].is_file());
@@ -180,8 +189,9 @@ mod tests {
 
     #[test]
     fn test_collect_documents_nonexistent() {
+        let current_path = std::env::current_dir().unwrap();
         let files = vec!["nonexistent_file.txt".to_string()];
-        let result = collect_documents(files);
+        let result = collect_documents(&current_path, files);
         assert!(result.is_err());
         let err = result.unwrap_err();
         let msg = format!("{:#}", err);
