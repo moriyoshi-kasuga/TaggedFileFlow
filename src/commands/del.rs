@@ -18,9 +18,13 @@ impl Run for Del {
         let mut data = Data::load()?;
 
         for name in &self.names {
-            if data.del(name).is_none() {
+            if data.get(name).is_none() {
                 anyhow::bail!("document '{}' not found", name);
             }
+        }
+
+        for name in &self.names {
+            data.del(name);
         }
 
         data.save()?;

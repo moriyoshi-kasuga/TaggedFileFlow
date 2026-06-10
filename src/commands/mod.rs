@@ -1,5 +1,8 @@
 use anyhow::Result;
 use clap::Parser;
+use color_print::cformat;
+
+use crate::data::DocumentBlock;
 
 mod del;
 mod init;
@@ -38,5 +41,18 @@ impl Run for Commands {
             Commands::List(cmd) => cmd.run(),
             Commands::Init(cmd) => cmd.run(),
         }
+    }
+}
+
+fn show_block(block: &DocumentBlock) {
+    let save_type = block.save.colored_label();
+    println!();
+    println!(
+        "{} on {}",
+        cformat!("<white>=></> {}: <red>{}</>", save_type, block.name),
+        cformat!("<white>[{}]</>", block.current.display()),
+    );
+    for doc in &block.documents {
+        println!(" {} {}", cformat!("<white>-</>"), doc.colored_path());
     }
 }

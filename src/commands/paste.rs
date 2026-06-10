@@ -2,9 +2,9 @@ use anyhow::Context;
 use clap::Parser;
 use color_print::cprintln;
 
-use crate::data::{show_block, Data, Document, SaveType};
+use crate::data::{Data, Document, SaveType};
 
-use super::Run;
+use super::{Run, show_block};
 
 #[derive(Parser)]
 #[command(about)]
@@ -75,8 +75,9 @@ impl Run for Paste {
 
         for name in &self.names {
             let doc = data
-                .del(name)
-                .ok_or_else(|| anyhow::anyhow!("document '{}' not found", name))?;
+                .get(name)
+                .ok_or_else(|| anyhow::anyhow!("document '{}' not found", name))?
+                .clone();
 
             for doc_entry in &doc.documents {
                 let path = doc_entry.as_path();
@@ -92,9 +93,10 @@ impl Run for Paste {
                 }
                 transfer_document(doc.save, doc_entry, from, to)?;
             }
+            data.del(name);
+            data.save()?;
             show_block(&doc);
         }
-        data.save()?;
         Ok(())
     }
 }

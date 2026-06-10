@@ -83,16 +83,8 @@ pub struct Data {
 }
 
 impl Data {
-    pub fn add(&mut self, document: DocumentBlock) -> anyhow::Result<()> {
-        if self.contains_name(&document.name) {
-            anyhow::bail!("document '{}' already exists", document.name);
-        }
+    pub fn add(&mut self, document: DocumentBlock) {
         self.blocks.push(document);
-        Ok(())
-    }
-
-    fn contains_name(&self, name: &str) -> bool {
-        self.blocks.iter().any(|block| block.name == name)
     }
 
     pub fn get(&self, name: &str) -> Option<&DocumentBlock> {
@@ -133,45 +125,42 @@ impl Data {
     }
 }
 
-fn ensure_empty_json(path: &Path) -> anyhow::Result<()> {
-    std::fs::write(path, "{}")
-        .with_context(|| format!("failed to initialize data file '{}'", path.display()))
-}
-
 fn get_file() -> anyhow::Result<PathBuf> {
-    let mut cache = dirs::cache_dir().context("failed to determine cache directory")?;
-    std::fs::create_dir_all(&cache)
-        .with_context(|| format!("failed to create cache directory '{}'", cache.display()))?;
-    cache.push("tagged-file-flow-documents.json");
+    let mut path = dirs::cache_dir().context("failed to determine cache directory")?;
+    std::fs::create_dir_all(&path)
+        .with_context(|| format!("failed to create cache directory '{}'", path.display()))?;
+    path.push("tagged-file-flow-documents.json");
 
-    if !cache.exists() {
-        ensure_empty_json(&cache)?;
-    } else {
-        let metadata = std::fs::metadata(&cache)
-            .with_context(|| format!("failed to read metadata for '{}'", cache.display()))?;
-        if !metadata.is_file() {
-            anyhow::bail!(
-                "expected a file at '{}', but it is not a file",
-                cache.display()
-            );
+    match std::fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(&path)
+    {
+        Ok(mut file) => {
+            use std::io::Write;
+            file.write_all(b"{}")
+                .with_context(|| format!("failed to initialize data file '{}'", path.display()))?;
         }
-        if metadata.len() == 0 {
-            ensure_empty_json(&cache)?;
+        Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => {
+            let metadata = std::fs::metadata(&path)
+                .with_context(|| format!("failed to read metadata for '{}'", path.display()))?;
+            if !metadata.is_file() {
+                anyhow::bail!(
+                    "expected a file at '{}', but it is not a file",
+                    path.display()
+                );
+            }
+            if metadata.len() == 0 {
+                std::fs::write(&path, "{}").with_context(|| {
+                    format!("failed to initialize data file '{}'", path.display())
+                })?;
+            }
+        }
+        Err(e) => {
+            return Err(anyhow::Error::from(e))
+                .with_context(|| format!("failed to create data file '{}'", path.display()));
         }
     }
 
-    Ok(cache)
-}
-
-pub fn show_block(block: &DocumentBlock) {
-    let save_type = block.save.colored_label();
-    println!();
-    println!(
-        "{} on {}",
-        cformat!("<white>=></> {}: <red>{}</>", save_type, block.name),
-        cformat!("<white>[{}]</>", block.current.display()),
-    );
-    for doc in &block.documents {
-        println!(" {} {}", cformat!("<white>-</>"), doc.colored_path());
-    }
+    Ok(path)
 }

@@ -1,11 +1,13 @@
-use clap::Parser;
-use rand::seq::SliceRandom;
+use std::collections::VecDeque;
 use std::path::{Path, PathBuf};
 
-use crate::data::{Data, Document, DocumentBlock, SaveType, show_block};
 use anyhow::Context;
+use clap::Parser;
+use rand::seq::SliceRandom;
 
-use super::Run;
+use crate::data::{Data, Document, DocumentBlock, SaveType};
+
+use super::{Run, show_block};
 
 const MAX_NAME_DEPTH: usize = 3;
 
@@ -62,7 +64,7 @@ fn execute_save(save: SaveType, args: SaveArgs) -> anyhow::Result<()> {
     };
 
     show_block(&doc);
-    data.add(doc)?;
+    data.add(doc);
     data.save()?;
     Ok(())
 }
@@ -71,24 +73,24 @@ fn collect_documents(current_path: &Path, files: Vec<String>) -> anyhow::Result<
     let mut documents = Vec::with_capacity(files.len());
 
     for file in files {
-        let path = PathBuf::from(&file)
+        let abs_path = PathBuf::from(&file)
             .canonicalize()
             .with_context(|| format!("failed to resolve path '{file}'"))?;
-        let is_file = path.is_file();
 
-        let path = path
+        let is_file = abs_path.is_file();
+        let is_dir = abs_path.is_dir();
+
+        let rel_path = abs_path
             .strip_prefix(current_path)
-            .with_context(|| {
-                format!("failed to resolve path '{file}' relative to current directory")
-            })?
+            .with_context(|| format!("'{}' is not under the current directory", file))?
             .to_path_buf();
 
         let document = if is_file {
-            Document::File(path)
-        } else if path.is_dir() {
-            Document::Dir(path)
+            Document::File(rel_path)
+        } else if is_dir {
+            Document::Dir(rel_path)
         } else {
-            anyhow::bail!("'{}' is not a file or directory", path.display());
+            anyhow::bail!("'{}' is not a file or directory", file);
         };
 
         documents.push(document);
@@ -141,15 +143,14 @@ fn resolve_document_name(data: &Data, name: Option<String>) -> anyhow::Result<St
 }
 
 fn generate_unique_name(data: &Data) -> anyhow::Result<String> {
-    let mut stack = vec![String::new()];
+    let mut queue = VecDeque::new();
+    queue.push_back(String::new());
     let mut rng = rand::rng();
 
     loop {
-        if stack.is_empty() {
-            anyhow::bail!("failed to generate unique document name (all candidates exhausted)");
-        }
-
-        let prefix = stack.remove(0);
+        let prefix = queue.pop_front().ok_or_else(|| {
+            anyhow::anyhow!("failed to generate unique document name (all candidates exhausted)")
+        })?;
         let should_expand = prefix.len() + 1 < MAX_NAME_DEPTH;
 
         let mut chars: Vec<char> = ('a'..='z').collect();
@@ -163,7 +164,7 @@ fn generate_unique_name(data: &Data) -> anyhow::Result<String> {
             }
 
             if should_expand {
-                stack.push(candidate);
+                queue.push_back(candidate);
             }
         }
     }
@@ -176,12 +177,18 @@ mod tests {
 
     #[test]
     fn test_collect_documents() {
-        let current_path = std::env::current_dir().unwrap();
+        let manifest_dir = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
         let files = vec![
-            "src/commands/save.rs".to_string(),
-            "src/data.rs".to_string(),
+            manifest_dir
+                .join("src/commands/save.rs")
+                .to_string_lossy()
+                .into_owned(),
+            manifest_dir
+                .join("src/data.rs")
+                .to_string_lossy()
+                .into_owned(),
         ];
-        let actual = collect_documents(&current_path, files).unwrap();
+        let actual = collect_documents(&manifest_dir, files).unwrap();
         assert_eq!(actual.len(), 2);
         assert!(actual[0].is_file());
         assert!(actual[1].is_file());

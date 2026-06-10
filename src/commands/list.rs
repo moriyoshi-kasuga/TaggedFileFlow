@@ -1,8 +1,8 @@
-use crate::data::{show_block, Data};
+use crate::data::Data;
 use clap::Parser;
 use color_print::cprintln;
 
-use super::Run;
+use super::{Run, show_block};
 
 #[derive(Parser)]
 #[command(about)]
