@@ -18,9 +18,9 @@ pub trait Run {
 #[clap(about, version)]
 pub enum Commands {
     /// mv to global
-    MV(save::MV),
+    Mv(save::Mv),
     /// cp to global
-    CP(save::CP),
+    Cp(save::Cp),
     /// paste from list
     Paste(paste::Paste),
     /// delete from list
@@ -34,8 +34,8 @@ pub enum Commands {
 impl Run for Commands {
     fn run(self) -> Result<()> {
         match self {
-            Commands::MV(cmd) => cmd.run(),
-            Commands::CP(cmd) => cmd.run(),
+            Commands::Mv(cmd) => cmd.run(),
+            Commands::Cp(cmd) => cmd.run(),
             Commands::Paste(cmd) => cmd.run(),
             Commands::Del(cmd) => cmd.run(),
             Commands::List(cmd) => cmd.run(),
@@ -44,7 +44,7 @@ impl Run for Commands {
     }
 }
 
-fn show_block(block: &DocumentBlock) {
+fn print_block(block: &DocumentBlock) {
     let save_type = block.save.colored_label();
     println!();
     println!(

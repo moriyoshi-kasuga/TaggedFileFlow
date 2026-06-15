@@ -2,7 +2,7 @@ use crate::data::Data;
 use clap::Parser;
 use color_print::cprintln;
 
-use super::{Run, show_block};
+use super::{Run, print_block};
 
 #[derive(Parser)]
 #[command(about)]
@@ -20,14 +20,14 @@ impl Run for List {
                 return Ok(());
             }
             for block in data.blocks() {
-                show_block(block);
+                print_block(block);
             }
         } else {
             for name in &self.names {
                 let doc = data
                     .get(name)
                     .ok_or_else(|| anyhow::anyhow!("document '{}' not found", name))?;
-                show_block(doc);
+                print_block(doc);
             }
         }
         Ok(())

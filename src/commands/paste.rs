@@ -4,7 +4,7 @@ use color_print::cprintln;
 
 use crate::data::{Data, Document, SaveType};
 
-use super::{Run, show_block};
+use super::{Run, print_block};
 
 #[derive(Parser)]
 #[command(about)]
@@ -24,7 +24,7 @@ fn transfer_document(
     to: std::path::PathBuf,
 ) -> anyhow::Result<()> {
     match (save, doc) {
-        (SaveType::MV, Document::File(_)) => {
+        (SaveType::Mv, Document::File(_)) => {
             fs_more::file::move_file(&from, &to, Default::default()).with_context(|| {
                 format!(
                     "failed to move file '{}' to '{}'",
@@ -33,7 +33,7 @@ fn transfer_document(
                 )
             })?;
         }
-        (SaveType::MV, Document::Dir(_)) => {
+        (SaveType::Mv, Document::Dir(_)) => {
             fs_more::directory::move_directory(&from, &to, Default::default()).with_context(
                 || {
                     format!(
@@ -44,7 +44,7 @@ fn transfer_document(
                 },
             )?;
         }
-        (SaveType::CP, Document::File(_)) => {
+        (SaveType::Cp, Document::File(_)) => {
             fs_more::file::copy_file(&from, &to, Default::default()).with_context(|| {
                 format!(
                     "failed to copy file '{}' to '{}'",
@@ -53,7 +53,7 @@ fn transfer_document(
                 )
             })?;
         }
-        (SaveType::CP, Document::Dir(_)) => {
+        (SaveType::Cp, Document::Dir(_)) => {
             fs_more::directory::copy_directory(&from, &to, Default::default()).with_context(
                 || {
                     format!(
@@ -95,7 +95,7 @@ impl Run for Paste {
             }
             data.del(name);
             data.save()?;
-            show_block(&doc);
+            print_block(&doc);
         }
         Ok(())
     }

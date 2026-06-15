@@ -46,15 +46,15 @@ impl Document {
 #[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 #[repr(u8)]
 pub enum SaveType {
-    MV,
-    CP,
+    Mv,
+    Cp,
 }
 
 impl fmt::Display for SaveType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            SaveType::MV => write!(f, "Move"),
-            SaveType::CP => write!(f, "Copy"),
+            SaveType::Mv => write!(f, "Move"),
+            SaveType::Cp => write!(f, "Copy"),
         }
     }
 }
@@ -62,8 +62,8 @@ impl fmt::Display for SaveType {
 impl SaveType {
     pub fn colored_label(&self) -> &'static str {
         match self {
-            SaveType::MV => cstr!("<blue>Move</>"),
-            SaveType::CP => cstr!("<yellow>Copy</>"),
+            SaveType::Mv => cstr!("<blue>Move</>"),
+            SaveType::Cp => cstr!("<yellow>Copy</>"),
         }
     }
 }
@@ -107,7 +107,7 @@ impl Data {
     }
 
     pub fn save(&self) -> anyhow::Result<()> {
-        let file_path = get_file()?;
+        let file_path = ensure_data_file_path()?;
         let json = serde_json::to_string(self).context("failed to serialize data")?;
         std::fs::write(&file_path, json)
             .with_context(|| format!("failed to write data to '{}'", file_path.display()))?;
@@ -115,7 +115,7 @@ impl Data {
     }
 
     pub fn load() -> anyhow::Result<Self> {
-        let file_path = get_file()?;
+        let file_path = ensure_data_file_path()?;
         let data = std::fs::read(&file_path)
             .with_context(|| format!("failed to read data from '{}'", file_path.display()))?;
         let data = serde_json::from_slice(&data).with_context(|| {
@@ -125,7 +125,8 @@ impl Data {
     }
 }
 
-fn get_file() -> anyhow::Result<PathBuf> {
+/// Returns the path to the data file, creating it with an empty JSON object if it doesn't exist.
+fn ensure_data_file_path() -> anyhow::Result<PathBuf> {
     let mut path = dirs::cache_dir().context("failed to determine cache directory")?;
     std::fs::create_dir_all(&path)
         .with_context(|| format!("failed to create cache directory '{}'", path.display()))?;

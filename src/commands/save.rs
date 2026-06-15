@@ -7,7 +7,7 @@ use rand::seq::SliceRandom;
 
 use crate::data::{Data, Document, DocumentBlock, SaveType};
 
-use super::{Run, show_block};
+use super::{Run, print_block};
 
 const MAX_NAME_DEPTH: usize = 3;
 
@@ -23,27 +23,27 @@ pub struct SaveArgs {
 
 #[derive(Parser)]
 #[command(about = "mv to global")]
-pub struct MV {
+pub struct Mv {
     #[clap(flatten)]
     pub args: SaveArgs,
 }
 
 #[derive(Parser)]
 #[command(about = "cp to global")]
-pub struct CP {
+pub struct Cp {
     #[clap(flatten)]
     pub args: SaveArgs,
 }
 
-impl Run for MV {
+impl Run for Mv {
     fn run(self) -> anyhow::Result<()> {
-        execute_save(SaveType::MV, self.args)
+        execute_save(SaveType::Mv, self.args)
     }
 }
 
-impl Run for CP {
+impl Run for Cp {
     fn run(self) -> anyhow::Result<()> {
-        execute_save(SaveType::CP, self.args)
+        execute_save(SaveType::Cp, self.args)
     }
 }
 
@@ -63,7 +63,7 @@ fn execute_save(save: SaveType, args: SaveArgs) -> anyhow::Result<()> {
         documents: deduplicated_documents,
     };
 
-    show_block(&doc);
+    print_block(&doc);
     data.add(doc);
     data.save()?;
     Ok(())
@@ -100,6 +100,8 @@ fn collect_documents(current_path: &Path, files: Vec<String>) -> anyhow::Result<
     Ok(documents)
 }
 
+/// Removes documents that are nested inside a directory also in the list.
+/// Relies on `documents` being sorted so that a parent directory always appears before its children.
 fn remove_nested_paths(mut documents: Vec<Document>) -> Vec<Document> {
     let mut current = 0;
 
@@ -142,6 +144,7 @@ fn resolve_document_name(data: &Data, name: Option<String>) -> anyhow::Result<St
     }
 }
 
+/// Generates a short unique name via BFS over [a-z]^MAX_NAME_DEPTH, shuffling each level for randomness.
 fn generate_unique_name(data: &Data) -> anyhow::Result<String> {
     let mut queue = VecDeque::new();
     queue.push_back(String::new());
