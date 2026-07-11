@@ -1,17 +1,34 @@
 use std::process::ExitCode;
 
 use clap::Parser;
-use commands::{Commands, Run};
 
-mod commands;
-mod data;
+use crate::cli::Cli;
+use crate::model::Mode;
+
+mod cli;
+mod model;
+mod ops;
+mod shell;
+mod store;
+mod ui;
 
 fn main() -> ExitCode {
-    match Commands::parse().run() {
+    match run(Cli::parse()) {
         Ok(()) => ExitCode::SUCCESS,
         Err(e) => {
-            color_print::ceprintln!("<red>error</>: {:#}", e);
+            ui::report_error(&e);
             ExitCode::FAILURE
         }
+    }
+}
+
+fn run(command: Cli) -> anyhow::Result<()> {
+    match command {
+        Cli::Mv(args) => ops::stash(Mode::Move, args),
+        Cli::Cp(args) => ops::stash(Mode::Copy, args),
+        Cli::Paste(args) => ops::paste(args),
+        Cli::Del(args) => ops::del(args),
+        Cli::List(args) => ops::list(args),
+        Cli::Init(args) => ops::init(args),
     }
 }

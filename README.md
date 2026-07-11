@@ -1,18 +1,17 @@
 # tagged file flow
 
 `tff` is designed for those who find the mv and cp commands in the CLI frustrating (myself included).
-It simplifies file management by allowing you to save a file under a random characters or specific name
-and then use tools like [zoxide](https://github.com/ajeetdsouza/zoxide) or [fzf](https://github.com/junegunn/fzf) to quickly navigate directories.
-Once there, you can paste the saved file into the target location —quick and efficient.
+Tag files right where they are, jump around with tools like [zoxide](https://github.com/ajeetdsouza/zoxide) or [fzf](https://github.com/junegunn/fzf),
+then paste the tagged files into the target directory — quick and efficient.
 
 ## Getting started
 
 ```sh
-mvg sample.txt sample_folder # sample.txt and sample_folder are stored with random characters
-cpg copy.txt -n copy # Saved copy.txt under the name copy
+mvg sample.txt sample_folder # tagged under a random name (e.g. "abc"), moved on paste
+cpg copy.txt -n copy         # tagged under the name "copy", copied on paste
 # Change directory using zoxide, fzf, etc.
-pasteg [random character] # moved sample.txt and sample_folder to the current directory
-pasteg copy # copied copy.txt
+pasteg abc  # moves sample.txt and sample_folder into the current directory
+pasteg copy # copies copy.txt into the current directory
 # The process is now complete.
 ```
 
@@ -20,27 +19,47 @@ pasteg copy # copied copy.txt
 
 ## Installation
 
-- cargo: `cargo install --git https://github.com/moriyoshi-kasuga/TaggedFileFlow`
-
-## Alias
-
 ```sh
-tagged_file_flow # default command
-tff   # alias of tagged_file_flow
-mvg   # alias of tff mv
-cpg   # alias of tff cp
-listg # alias of tff list
-delg  # alias of tff del
+cargo install --git https://github.com/moriyoshi-kasuga/TaggedFileFlow
 ```
 
-<details open>
-<summary>To use alias, do the following</summary>
+This installs a single binary named `tff`.
 
-> Add this to your config file (usually `~/.zshrc` on zsh, `~/.bashrc` on bash, etc.)
-> supports zsh, bash, fish, and nushell
+## Commands
+
+| Command | Description |
+| --- | --- |
+| `tff mv <paths>...` | Tag files/folders to be **moved** on paste |
+| `tff cp <paths>...` | Tag files/folders to be **copied** on paste |
+| `tff paste <names>...` | Transfer tagged files into the current directory |
+| `tff list [names]...` | Show all tags, or only the named ones |
+| `tff del <names>...` | Delete tags |
+| `tff init <shell>` | Print alias definitions for your shell |
+
+- `mv` / `cp` accept `-n <name>` to name the tag; without it a random 3-letter name is generated.
+- `paste` refuses to overwrite existing paths unless `--force` is given. With `--force`, a colliding path is replaced wholesale (not merged).
+- A tag is consumed by `paste`.
+
+## Aliases
+
+`tff init` prints short aliases for the subcommands:
+
+| Alias | Expands to |
+| --- | --- |
+| `mvg` | `tff mv` |
+| `cpg` | `tff cp` |
+| `pasteg` | `tff paste` |
+| `delg` | `tff del` |
+| `listg` | `tff list` |
+
+<details open>
+<summary>To use the aliases, do the following</summary>
+
+> Add this to your shell config file (usually `~/.zshrc` on zsh, `~/.bashrc` on bash, etc.)
+> Supported shells: `bash`, `posix`, `zsh`, `fish`, and `nushell`
 >
 > ```sh
-> eval "$(tagged_file_flow init zsh)"
+> eval "$(tff init zsh)"
 > ```
 
 </details>
