@@ -55,5 +55,12 @@ fn document_path(document: &Document) -> String {
             }
         }
         Document::Dir(_) => cformat!("<cyan>{}/", path.display()),
+        Document::Symlink(_) => {
+            let lossy = path.to_string_lossy();
+            match lossy.rsplit_once('/') {
+                Some((dir, file)) => cformat!("<cyan>{}/<magenta!>{}", dir, file),
+                None => cformat!("<magenta!>{}", path.display()),
+            }
+        }
     }
 }

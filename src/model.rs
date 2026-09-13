@@ -91,23 +91,25 @@ impl AsRef<Path> for RelPath {
 pub(crate) enum Document {
     File(RelPath),
     Dir(RelPath),
+    Symlink(RelPath),
 }
 
 impl Document {
     pub(crate) fn as_path(&self) -> &Path {
         match self {
-            Document::File(path) | Document::Dir(path) => path.as_ref(),
+            Document::File(path) | Document::Dir(path) | Document::Symlink(path) => path.as_ref(),
         }
     }
 
-    pub(crate) fn is_file(&self) -> bool {
-        matches!(self, Document::File(_))
+    pub(crate) fn is_dir(&self) -> bool {
+        matches!(self, Document::Dir(_))
     }
 
     pub(crate) fn kind_label(&self) -> &'static str {
         match self {
             Document::File(_) => "file",
             Document::Dir(_) => "folder",
+            Document::Symlink(_) => "symlink",
         }
     }
 }

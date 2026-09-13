@@ -37,7 +37,7 @@ This installs a single binary named `tff`.
 | `tff init <shell>` | Print alias definitions for your shell |
 
 - `mv` / `cp` accept `-n <name>` to name the tag; without it a random 3-letter name is generated.
-- `paste` refuses to overwrite existing paths unless `--force` is given. With `--force`, a colliding path is replaced wholesale (not merged).
+- `paste` refuses to overwrite existing paths unless `--force` is given. With `--force`, a colliding file (or symlink) is overwritten and a colliding folder is merged recursively, keeping any existing entries not part of the tag. A collision between mismatched kinds (e.g. a file where a folder is expected) still aborts, even with `--force`.
 - A tag is consumed by `paste`.
 
 ## Aliases
