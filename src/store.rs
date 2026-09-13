@@ -134,7 +134,6 @@ fn default_path() -> anyhow::Result<PathBuf> {
 }
 
 #[cfg(test)]
-#[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
     use crate::model::Mode;

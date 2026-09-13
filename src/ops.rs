@@ -204,7 +204,6 @@ fn remove_destination(to: &Path) -> anyhow::Result<()> {
 }
 
 #[cfg(test)]
-#[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
 
