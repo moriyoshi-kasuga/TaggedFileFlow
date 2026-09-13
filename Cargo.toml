@@ -9,20 +9,14 @@ name = "tff"
 path = "src/main.rs"
 
 [dependencies]
-clap = { version = "=4.6.1", features = ["derive"] }
-dirs = "=6.0.0"
-serde = { version = "=1.0.228", features = ["derive"] }
-serde_json = "=1.0.150"
-anyhow = "=1.0.103"
+clap = { version = "=4.6.6", features = ["derive"] }
+dirs = "=7.0.0"
+serde = { version = "=1.0.229", features = ["derive"] }
+serde_json = "=1.0.151"
+anyhow = "=1.0.104"
 color-print = "=0.3.7"
 rand = "=0.10.2"
 fs-more = "=0.8.1"
-
-[lints.rust]
-nonstandard_style = { level = "warn", priority = -1 }
-unreachable_pub = "warn"
-unused_import_braces = "warn"
-unused_lifetimes = "warn"
 
 [lints.clippy]
 unwrap_used = "deny"
