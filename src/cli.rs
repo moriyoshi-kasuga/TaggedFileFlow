@@ -60,4 +60,7 @@ pub(crate) struct ListArgs {
 #[derive(Args)]
 pub(crate) struct InitArgs {
     pub(crate) shell: Shell,
+    /// Preferred characters for random tag names (e.g. "jkl"), tried in order before falling back to a random unused letter
+    #[arg(long)]
+    pub(crate) priority: Option<String>,
 }

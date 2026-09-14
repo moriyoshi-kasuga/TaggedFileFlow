@@ -5,10 +5,10 @@ use rand::RngExt;
 
 use crate::cli::{DelArgs, InitArgs, ListArgs, PasteArgs, StashArgs};
 use crate::model::{Document, Mode, RelPath, Tag, TagName};
+use crate::shell::NAME_PRIORITY_ENV;
 use crate::store::Store;
 use crate::{shell, ui};
 
-const NAME_LEN: usize = 3;
 const NAME_CHARS: &[u8] = b"abcdefghijklmnopqrstuvwxyz";
 
 pub(crate) fn stash(mode: Mode, args: StashArgs) -> anyhow::Result<()> {
@@ -141,8 +141,26 @@ pub(crate) fn list(args: ListArgs) -> anyhow::Result<()> {
 }
 
 pub(crate) fn init(args: InitArgs) -> anyhow::Result<()> {
-    ui::print_script(&shell::script(args.shell));
+    let priority = args.priority.map(|p| validate_priority(&p)).transpose()?;
+    ui::print_script(&shell::script(args.shell, priority.as_deref()));
     Ok(())
+}
+
+/// Rejects anything but lowercase letters, and drops repeated characters while
+/// keeping the first occurrence, so the priority order stays unambiguous.
+fn validate_priority(priority: &str) -> anyhow::Result<String> {
+    anyhow::ensure!(!priority.is_empty(), "priority must not be empty");
+    let mut cleaned = String::with_capacity(priority.len());
+    for c in priority.chars() {
+        anyhow::ensure!(
+            c.is_ascii_lowercase(),
+            "invalid priority character '{c}': only lowercase letters a-z are allowed"
+        );
+        if !cleaned.contains(c) {
+            cleaned.push(c);
+        }
+    }
+    Ok(cleaned)
 }
 
 fn collect_documents(origin: &Path, files: &[PathBuf]) -> anyhow::Result<Vec<Document>> {
@@ -207,15 +225,33 @@ fn normalize(mut documents: Vec<Document>) -> Vec<Document> {
 }
 
 fn generate_unique_name(store: &Store) -> anyhow::Result<TagName> {
-    let mut rng = rand::rng();
-    loop {
-        let candidate: String = (0..NAME_LEN)
-            .map(|_| NAME_CHARS[rng.random_range(0..NAME_CHARS.len())] as char)
-            .collect();
+    let priority = std::env::var(NAME_PRIORITY_ENV).unwrap_or_default();
+    generate_unique_name_with_priority(store, &priority)
+}
+
+/// Generates a single-character tag name, trying `priority`'s characters in
+/// order before falling back to a random unused letter.
+fn generate_unique_name_with_priority(store: &Store, priority: &str) -> anyhow::Result<TagName> {
+    for c in priority.chars() {
+        let candidate = c.to_string();
         if !store.contains(&candidate) {
             return TagName::new(candidate);
         }
     }
+
+    let candidates: Vec<u8> = NAME_CHARS
+        .iter()
+        .copied()
+        .filter(|&b| !store.contains((b as char).to_string().as_str()))
+        .collect();
+    anyhow::ensure!(
+        !candidates.is_empty(),
+        "no available tag name: all letters a-z are already in use"
+    );
+
+    let mut rng = rand::rng();
+    let pick = candidates[rng.random_range(0..candidates.len())];
+    TagName::new((pick as char).to_string())
 }
 
 fn transfer(
@@ -317,6 +353,60 @@ mod tests {
 
     fn file(path: &str) -> Document {
         Document::File(RelPath::for_test(path))
+    }
+
+    fn tag_with_name(store: &mut Store, name: &str) {
+        store.insert(
+            TagName::new(name).unwrap(),
+            Tag {
+                origin: PathBuf::from("/origin"),
+                mode: Mode::Move,
+                documents: vec![],
+            },
+        );
+    }
+
+    #[test]
+    fn validate_priority_rejects_empty() {
+        assert!(validate_priority("").is_err());
+    }
+
+    #[test]
+    fn validate_priority_rejects_non_lowercase() {
+        assert!(validate_priority("jKl").is_err());
+        assert!(validate_priority("j1l").is_err());
+    }
+
+    #[test]
+    fn validate_priority_dedupes_keeping_first_occurrence() {
+        assert_eq!(validate_priority("jjkjl").unwrap(), "jkl");
+    }
+
+    #[test]
+    fn generate_unique_name_picks_first_unused_priority_char() {
+        let mut store = Store::for_test();
+        tag_with_name(&mut store, "j");
+        let name = generate_unique_name_with_priority(&store, "jkl").unwrap();
+        assert_eq!(name.as_str(), "k");
+    }
+
+    #[test]
+    fn generate_unique_name_falls_back_to_random_when_priority_exhausted() {
+        let mut store = Store::for_test();
+        tag_with_name(&mut store, "j");
+        tag_with_name(&mut store, "k");
+        tag_with_name(&mut store, "l");
+        let name = generate_unique_name_with_priority(&store, "jkl").unwrap();
+        assert!(!"jkl".contains(name.as_str()));
+    }
+
+    #[test]
+    fn generate_unique_name_errors_when_alphabet_is_full() {
+        let mut store = Store::for_test();
+        for b in NAME_CHARS {
+            tag_with_name(&mut store, &(*b as char).to_string());
+        }
+        assert!(generate_unique_name_with_priority(&store, "").is_err());
     }
 
     fn dir(path: &str) -> Document {

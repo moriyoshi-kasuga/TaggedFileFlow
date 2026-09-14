@@ -111,6 +111,14 @@ impl Store {
             .collect())
     }
 
+    #[cfg(test)]
+    pub(crate) fn for_test() -> Self {
+        Self {
+            path: PathBuf::from("/unused/tags.json"),
+            tags: BTreeMap::new(),
+        }
+    }
+
     fn ensure_all_exist(&self, names: &[TagName]) -> anyhow::Result<()> {
         let missing: Vec<&str> = names
             .iter()
@@ -139,10 +147,7 @@ mod tests {
     use crate::model::Mode;
 
     fn empty_store() -> Store {
-        Store {
-            path: PathBuf::from("/unused/tags.json"),
-            tags: BTreeMap::new(),
-        }
+        Store::for_test()
     }
 
     fn tag() -> Tag {

@@ -7,10 +7,10 @@ then paste the tagged files into the target directory — quick and efficient.
 ## Getting started
 
 ```sh
-mvg sample.txt sample_folder # tagged under a random name (e.g. "abc"), moved on paste
+mvg sample.txt sample_folder # tagged under a random single letter (e.g. "a"), moved on paste
 cpg copy.txt -n copy         # tagged under the name "copy", copied on paste
 # Change directory using zoxide, fzf, etc.
-pasteg abc  # moves sample.txt and sample_folder into the current directory
+pasteg a    # moves sample.txt and sample_folder into the current directory
 pasteg copy # copies copy.txt into the current directory
 # The process is now complete.
 ```
@@ -27,16 +27,16 @@ This installs a single binary named `tff`.
 
 ## Commands
 
-| Command | Description |
-| --- | --- |
-| `tff mv <paths>...` | Tag files/folders to be **moved** on paste |
-| `tff cp <paths>...` | Tag files/folders to be **copied** on paste |
+| Command                | Description                                      |
+| ---------------------- | ------------------------------------------------ |
+| `tff mv <paths>...`    | Tag files/folders to be **moved** on paste       |
+| `tff cp <paths>...`    | Tag files/folders to be **copied** on paste      |
 | `tff paste <names>...` | Transfer tagged files into the current directory |
-| `tff list [names]...` | Show all tags, or only the named ones |
-| `tff del <names>...` | Delete tags |
-| `tff init <shell>` | Print alias definitions for your shell |
+| `tff list [names]...`  | Show all tags, or only the named ones            |
+| `tff del <names>...`   | Delete tags                                      |
+| `tff init <shell>`     | Print alias definitions for your shell           |
 
-- `mv` / `cp` accept `-n <name>` to name the tag; without it a random 3-letter name is generated.
+- `mv` / `cp` accept `-n <name>` to name the tag; without it a random single-letter name (`a`-`z`) is generated. If all 26 letters are taken, tagging fails until a tag is deleted or pasted.
 - `paste` refuses to overwrite existing paths unless `--force` is given. With `--force`, a colliding file (or symlink) is overwritten and a colliding folder is merged recursively, keeping any existing entries not part of the tag. A collision between mismatched kinds (e.g. a file where a folder is expected) still aborts, even with `--force`.
 - A tag is consumed by `paste`.
 
@@ -44,13 +44,13 @@ This installs a single binary named `tff`.
 
 `tff init` prints short aliases for the subcommands:
 
-| Alias | Expands to |
-| --- | --- |
-| `mvg` | `tff mv` |
-| `cpg` | `tff cp` |
+| Alias    | Expands to  |
+| -------- | ----------- |
+| `mvg`    | `tff mv`    |
+| `cpg`    | `tff cp`    |
 | `pasteg` | `tff paste` |
-| `delg` | `tff del` |
-| `listg` | `tff list` |
+| `delg`   | `tff del`   |
+| `listg`  | `tff list`  |
 
 <details open>
 <summary>To use the aliases, do the following</summary>
@@ -63,3 +63,13 @@ This installs a single binary named `tff`.
 > ```
 
 </details>
+
+### Preferred tag letters
+
+`tff init --priority <letters>` also exports `TFF_NAME_PRIORITY`, so auto-generated tag names try those letters first, in the order given, before falling back to a random unused one — handy for picking letters that sit under your fingers:
+
+```sh
+eval "$(tff init zsh --priority jkl)"
+```
+
+With `jkl` set, tagging without `-n` names the first tag `j`, the next `k`, then `l`; once all three are taken it picks randomly from the remaining unused letters.
